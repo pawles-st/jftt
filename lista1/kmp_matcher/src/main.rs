@@ -27,7 +27,7 @@ fn create_lps(pattern: &str) -> Vec<usize> {
     return lps;
 }
 
-fn find(lps: Vec<usize>, pattern: &str, text: &str) {
+fn find(lps: &Vec<usize>, pattern: &str, text: &str) {
     let pattern_chars: Vec<char> = pattern.chars().collect();
     let mut text_chars = text.chars();
 
@@ -63,5 +63,5 @@ fn main() {
 
     println!("lps table: {:?}", lps);
 
-    find(lps, &pattern, &text);
+    find(&lps, &pattern, &text);
 }
