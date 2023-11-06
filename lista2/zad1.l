@@ -1,10 +1,10 @@
-%top {
+%top{
 	#include <stdio.h>
 }
 
 %{
-int no_lines = 0;
-int no_words = 0;
+	int no_lines = 0;
+	int no_words = 0;
 %}
 
 %%
@@ -19,7 +19,7 @@ int no_words = 0;
 %%
 
 int yywrap() {
-	printf("no. lines = %d\n", no_lines);
+	printf("\nno. lines = %d\n", no_lines);
 	printf("no. words = %d\n", no_words);
 	return 1;
 }

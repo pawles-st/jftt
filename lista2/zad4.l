@@ -19,18 +19,35 @@ DIGIT             [0-9]
 NUMBER            \-?{DIGIT}+
 OPERATOR          [+\-*/^%]
 
+%x ERROR
+%s CALC
+
 %%
+
+
+<ERROR>[^\n]      ;
+<ERROR>\n         ECHO; BEGIN(INITIAL);
+
+<INITIAL>^[^\n]+\n ECHO; yyless(0); BEGIN(CALC);
+<INITIAL>^\n      ;
 
 [ \t]*            ;
 
 {NUMBER}          {
-	*stackptr++ = atoi(yytext);
+	*stackptr = atoi(yytext);
+	stackptr += 1;
 }
 
 {OPERATOR}        {
-	b = *--stackptr;
-	a = *--stackptr;
-	REJECT;
+	if (stackptr == stack || stackptr == stack + 1) {
+		stackptr = stack;
+		printf("error: not enough arguments");
+		BEGIN(ERROR);
+	} else {
+		b = *--stackptr;
+		a = *--stackptr;
+		REJECT;
+	}
 }
 
 "+"               {
@@ -46,7 +63,13 @@ OPERATOR          [+\-*/^%]
 }
 
 "/"               {
-	*stackptr++ = a / b;
+	if (b == 0) {
+		stackptr = stack;
+		printf("error: division by 0");
+		BEGIN(ERROR);
+	} else {
+		*stackptr++ = a / b;
+	}
 }
 
 "^"               {
@@ -54,7 +77,13 @@ OPERATOR          [+\-*/^%]
 }
 
 "%"               {
-	*stackptr++ = a % b;
+	if (b == 0) {
+		stackptr = stack;
+		printf("error: division by 0");
+		BEGIN(ERROR);
+	} else {
+		*stackptr++ = a % b;
+	}
 }
 
 <<EOF>>           {
@@ -65,14 +94,19 @@ OPERATOR          [+\-*/^%]
 }
 
 .                 {
-	printf("incorrect symbol: %s\n", yytext);
+	stackptr = stack;
+	printf("error: incorrect symbol \"%s\"", yytext);
+	BEGIN(ERROR);
 }
 
-\n                {
-	if (stackptr != stack) {
+<CALC>\n          {
+	if (stackptr == stack + 1) {
 		printf("= %d\n", *--stackptr);
+	} else {
+		printf("error: not enough operators\n");
 	}
 	stackptr = stack;
+	BEGIN(INITIAL);
 }
 
 %%
