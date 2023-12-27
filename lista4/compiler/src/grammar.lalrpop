@@ -1,0 +1,140 @@
+use std::str::FromStr;
+
+use crate::err::ImpError;
+use crate::ast::*;
+
+use lalrpop_util::ParseError;
+
+grammar;
+
+extern {
+	type Error = ImpError;
+}
+
+match {
+	r"\s*" => {  },
+	r"#[^\n\r]*\r?\n?" => {  },
+	_,
+}
+
+pub ProgramAll: ProgramAll = {
+	Procedures Main => ProgramAll::new(<>),
+}
+
+Procedures: Procedures = {
+	<mut v: Procedures> "PROCEDURE" <h: ProcHead> "IS" <d: Declarations> "IN" <c: Commands> "END" => {
+		v.push(Procedure::new(h, d, c));
+		v
+	},
+	<mut v: Procedures> "PROCEDURE" <h: ProcHead> "IS" "IN" <c: Commands> "END" => {
+		v.push(Procedure::new(h, Vec::new(), c));
+		v
+	},
+	=> Vec::new(),
+}
+
+Main: Main = {
+	"PROGRAM IS" <Declarations> "IN" <Commands> "END" => Main::new(<>),
+	"PROGRAM IS" "IN" <Commands> "END" => Main::new(Vec::new(), <>),
+}
+
+Commands: Commands = {
+	<mut v: Commands> <c: Command> => {
+		v.push(c);
+		v
+	},
+	Command => vec![<>],
+}
+
+Command: Command = {
+	<Identifier> ":=" <Expression> ";" => Command::Assignment(<>),
+	"IF" <Condition> "THEN" <Commands> "ELSE" <Commands> "ENDIF" => Command::IfElse(<>),
+	"IF" <Condition> "THEN" <Commands> "ENDIF" => Command::If(<>),
+	"WHILE" <Condition> "DO" <Commands> "ENDWHILE" => Command::While(<>),
+	"REPEAT" <Commands> "UNTIL" <Condition> ";" => Command::Repeat(<>),
+	<ProcCall> ";" => Command::ProcedureCall(<>),
+	"READ" <Identifier> ";" => Command::Read(<>),
+	"WRITE" <Value> ";" => Command::Write(<>),
+}
+
+ProcHead: ProcHead = {
+	<Pidentifier> "(" <ArgsDecl> ")" => ProcHead::new(<>),
+}
+
+ProcCall: ProcCall = {
+	<Pidentifier> "(" <Args> ")" => ProcCall::new(<>),
+}
+
+Declarations: Declarations = {
+	<mut v: Declarations> "," <p: Pidentifier> => {
+		v.push(Declaration::Var(p));
+		v
+	},
+	<mut v: Declarations> "," <p: Pidentifier> "[" <n: Num> "]" => {
+		v.push(Declaration::Arr(p, n));
+		v
+	},
+	Pidentifier => vec![Declaration::Var(<>)],
+	<Pidentifier> "[" <Num> "]" => vec![Declaration::Arr(<>)],
+}
+
+ArgsDecl: ArgumentDeclarations = {
+	<mut v: ArgsDecl> "," <p: Pidentifier> => {
+		v.push(ArgumentDeclaration::Var(p));
+		v
+	},
+	<mut v: ArgsDecl> "," "T" <p: Pidentifier> => {
+		v.push(ArgumentDeclaration::Arr(p));
+		v
+	},
+	Pidentifier => vec![ArgumentDeclaration::Var(<>)],
+	"T" <Pidentifier> => vec![ArgumentDeclaration::Arr(<>)],
+}
+
+Args: Arguments = {
+	<mut v: Args> "," <p: Pidentifier> => {
+		v.push(p);
+		v
+	},
+	Pidentifier => vec![<>],
+}
+
+Expression: Expression = {
+	Value => Expression::Val(<>),
+	<Value> "+" <Value> => Expression::Add(<>),
+	<Value> "-" <Value> => Expression::Sub(<>),
+	<Value> "*" <Value> => Expression::Mul(<>),
+	<Value> "/" <Value> => Expression::Div(<>),
+	<Value> "%" <Value> => Expression::Mod(<>),
+}
+
+Condition: Condition = {
+	<Value> "=" <Value> => Condition::Equal(<>),
+	<Value> "!=" <Value> => Condition::NotEqual(<>),
+	<Value> ">" <Value> => Condition::Greater(<>),
+	<Value> "<" <Value> => Condition::Lesser(<>),
+	<Value> ">=" <Value> => Condition::GreaterOrEqual(<>),
+	<Value> "<=" <Value> => Condition::LesserOrEqual(<>),
+}
+
+Value: Value = {
+	Num => Value::Number(<>),
+	Identifier => Value::Id(<>),
+}
+
+Identifier: Identifier = {
+	Pidentifier => Identifier::Pid(<>),
+	<Pidentifier> "[" <Num> "]" => Identifier::ArrNum(<>),
+	<Pidentifier> "[" <Pidentifier> "]" => Identifier::ArrPid(<>),
+}
+
+Pidentifier: String = {
+	r"[_a-z]+" => <>.to_string(),
+}
+
+Num: u64 = {
+	r"[0-9]+" =>? u64::from_str(<>)
+		.map_err(|_| ParseError::User{
+			error: ImpError::NumberTooBig
+		}),
+}
