@@ -1,0 +1,35 @@
+use std::str::FromStr;
+use std::cell::Cell;
+
+use lalrpop_util::ParseError;
+use super::CalculatorError;
+use rcalc::modulo::Modulo;
+
+grammar(p: &Cell<u64>);
+
+extern {
+	type Error = CalculatorError;
+}
+
+pub Expr: Modulo = {
+	#[precedence(level = "0")]
+	Num,
+	"(" <e: Expr> ")" => e,
+	#[precedence(level = "1")] #[assoc(side = "left")]
+	"-" <e: Expr> => Modulo::neg(e),
+	#[precedence(level = "2")] #[assoc(side = "left")]
+	<l: Expr> "*" <r: Expr> => l * r,
+	<l: Expr> "/" <r: Expr> => l / r,
+	#[precedence(level = "3")] #[assoc(side = "left")]
+	<l: Expr> "+" <r: Expr> => l + r,
+	<l: Expr> "-" <r: Expr> => l - r,
+};
+
+Num: Modulo = {
+	r"[0-9]+" =>? match u64::from_str(<>) {
+		Ok(v) => Ok(Modulo::new(v)),
+		Err(_) => Err(ParseError::User {
+			error: CalculatorError::NumberExceededRange
+		}),
+	}
+};

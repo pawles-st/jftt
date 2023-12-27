@@ -130,8 +130,8 @@ enum yysymbol_kind_t
   YYSYMBOL_6_ = 6,                         /* '-'  */
   YYSYMBOL_7_ = 7,                         /* '*'  */
   YYSYMBOL_8_ = 8,                         /* '/'  */
-  YYSYMBOL_NEG = 9,                        /* NEG  */
-  YYSYMBOL_10_ = 10,                       /* '^'  */
+  YYSYMBOL_9_ = 9,                         /* '^'  */
+  YYSYMBOL_NEG = 10,                       /* NEG  */
   YYSYMBOL_11_n_ = 11,                     /* '\n'  */
   YYSYMBOL_12_ = 12,                       /* '('  */
   YYSYMBOL_13_ = 13,                       /* ')'  */
@@ -469,16 +469,16 @@ union yyalloc
 /* YYFINAL -- State number of the termination state.  */
 #define YYFINAL  2
 /* YYLAST -- Last index in YYTABLE.  */
-#define YYLAST   83
+#define YYLAST   88
 
 /* YYNTOKENS -- Number of terminals.  */
 #define YYNTOKENS  14
 /* YYNNTS -- Number of nonterminals.  */
 #define YYNNTS  7
 /* YYNRULES -- Number of rules.  */
-#define YYNRULES  25
+#define YYNRULES  26
 /* YYNSTATES -- Number of states.  */
-#define YYNSTATES  49
+#define YYNSTATES  51
 
 /* YYMAXUTOK -- Last valid token kind.  */
 #define YYMAXUTOK   260
@@ -504,7 +504,7 @@ static const yytype_int8 yytranslate[] =
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
-       2,     2,     2,     2,    10,     2,     2,     2,     2,     2,
+       2,     2,     2,     2,     9,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
@@ -521,7 +521,7 @@ static const yytype_int8 yytranslate[] =
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     1,     2,     3,     4,
-       9
+      10
 };
 
 #if YYDEBUG
@@ -530,7 +530,7 @@ static const yytype_int8 yyrline[] =
 {
        0,    37,    37,    38,    42,    43,    44,    48,    49,    50,
       51,    52,    53,    54,    55,    59,    60,    64,    65,    66,
-      67,    68,    69,    70,    74,    75
+      67,    68,    69,    70,    71,    75,    76
 };
 #endif
 
@@ -547,7 +547,7 @@ static const char *yysymbol_name (yysymbol_kind_t yysymbol) YY_ATTRIBUTE_UNUSED;
 static const char *const yytname[] =
 {
   "\"end of file\"", "error", "\"invalid token\"", "NUM", "ERR", "'+'",
-  "'-'", "'*'", "'/'", "NEG", "'^'", "'\\n'", "'('", "')'", "$accept",
+  "'-'", "'*'", "'/'", "'^'", "NEG", "'\\n'", "'('", "')'", "$accept",
   "input", "line", "exp", "number", "exppow", "numberpow", YY_NULLPTR
 };
 
@@ -558,7 +558,7 @@ yysymbol_name (yysymbol_kind_t yysymbol)
 }
 #endif
 
-#define YYPACT_NINF (-28)
+#define YYPACT_NINF (-31)
 
 #define yypact_value_is_default(Yyn) \
   ((Yyn) == YYPACT_NINF)
@@ -572,11 +572,12 @@ yysymbol_name (yysymbol_kind_t yysymbol)
    STATE-NUM.  */
 static const yytype_int8 yypact[] =
 {
-     -28,     0,   -28,    -2,   -28,    17,   -28,    18,   -28,    68,
-     -28,   -28,     2,    18,   -28,    37,    18,    18,    18,    18,
-      28,   -28,    46,   -28,    73,    73,    27,    27,   -28,    29,
-      28,   -28,   -28,   -28,    30,    28,   -28,    55,    28,    28,
-      28,    28,    59,   -28,    11,    11,   -28,   -28,   -28
+     -31,    13,   -31,    -9,   -31,    27,   -31,    28,   -31,    77,
+     -31,   -31,     1,    28,   -31,    41,    28,    28,    28,    28,
+      29,   -31,    50,   -31,    53,    53,    -6,    -6,   -31,    39,
+      29,    11,   -31,   -31,    12,    29,   -31,    59,    29,    29,
+      29,    29,    29,    68,   -31,    62,    62,    11,    11,    11,
+     -31
 };
 
 /* YYDEFACT[STATE-NUM] -- Default reduction number in state STATE-NUM.
@@ -586,15 +587,16 @@ static const yytype_int8 yydefact[] =
 {
        2,     0,     1,     0,    15,     0,     4,     0,     3,     0,
        7,     6,     0,     0,    16,     0,     0,     0,     0,     0,
-       0,     5,     0,    14,     8,     9,    10,    11,    24,     0,
-       0,    13,    17,    12,     0,     0,    25,     0,     0,     0,
-       0,     0,     0,    23,    18,    19,    20,    21,    22
+       0,     5,     0,    14,     8,     9,    10,    11,    25,     0,
+       0,    13,    17,    12,     0,     0,    26,     0,     0,     0,
+       0,     0,     0,     0,    24,    18,    19,    20,    22,    21,
+      23
 };
 
 /* YYPGOTO[NTERM-NUM].  */
 static const yytype_int8 yypgoto[] =
 {
-     -28,   -28,   -28,    -3,    34,   -13,   -27
+     -31,   -31,   -31,    10,    31,   -30,   -28
 };
 
 /* YYDEFGOTO[NTERM-NUM].  */
@@ -608,28 +610,28 @@ static const yytype_int8 yydefgoto[] =
    number is the opposite.  If YYTABLE_NINF, syntax error.  */
 static const yytype_int8 yytable[] =
 {
-       2,     3,    36,     4,    15,     4,     5,    36,    12,    11,
-      22,     6,     7,    24,    25,    26,    27,    37,    40,    41,
-       4,     4,    42,    12,     5,    44,    45,    46,    47,    13,
-       7,    28,    28,    28,    29,    34,    34,    20,     0,    14,
-      30,    35,    16,    17,    18,    19,    14,    20,     0,     0,
-      23,    16,    17,    18,    19,     0,    20,     0,     0,    33,
-      38,    39,    40,    41,    38,    39,    40,    41,    43,     0,
-       0,     0,    48,    16,    17,    18,    19,     0,    20,    21,
-      18,    19,     0,    20
+      37,    36,    11,    20,     4,    43,    36,    12,    45,    46,
+      47,    48,    49,     2,     3,    28,     4,    15,    34,     5,
+      42,     0,     0,    22,     6,     7,    24,    25,    26,    27,
+       4,     4,    28,    12,     5,    29,    14,     0,     0,    13,
+       7,    30,    28,    14,     0,    34,    16,    17,    18,    19,
+      20,    35,     0,     0,    23,    16,    17,    18,    19,    20,
+      18,    19,    20,    33,    38,    39,    40,    41,    42,    40,
+      41,    42,    44,    38,    39,    40,    41,    42,     0,     0,
+       0,    50,    16,    17,    18,    19,    20,     0,    21
 };
 
 static const yytype_int8 yycheck[] =
 {
-       0,     1,    29,     3,     7,     3,     6,    34,     6,    11,
-      13,    11,    12,    16,    17,    18,    19,    30,     7,     8,
-       3,     3,    35,     6,     6,    38,    39,    40,    41,    12,
-      12,     3,     3,     3,     6,     6,     6,    10,    -1,     5,
-      12,    12,     5,     6,     7,     8,    12,    10,    -1,    -1,
-      13,     5,     6,     7,     8,    -1,    10,    -1,    -1,    13,
-       5,     6,     7,     8,     5,     6,     7,     8,    13,    -1,
-      -1,    -1,    13,     5,     6,     7,     8,    -1,    10,    11,
-       7,     8,    -1,    10
+      30,    29,    11,     9,     3,    35,    34,     6,    38,    39,
+      40,    41,    42,     0,     1,     3,     3,     7,     6,     6,
+       9,    -1,    -1,    13,    11,    12,    16,    17,    18,    19,
+       3,     3,     3,     6,     6,     6,     5,    -1,    -1,    12,
+      12,    12,     3,    12,    -1,     6,     5,     6,     7,     8,
+       9,    12,    -1,    -1,    13,     5,     6,     7,     8,     9,
+       7,     8,     9,    13,     5,     6,     7,     8,     9,     7,
+       8,     9,    13,     5,     6,     7,     8,     9,    -1,    -1,
+      -1,    13,     5,     6,     7,     8,     9,    -1,    11
 };
 
 /* YYSTOS[STATE-NUM] -- The symbol kind of the accessing symbol of
@@ -638,9 +640,10 @@ static const yytype_int8 yystos[] =
 {
        0,    15,     0,     1,     3,     6,    11,    12,    16,    17,
       18,    11,     6,    12,    18,    17,     5,     6,     7,     8,
-      10,    11,    17,    13,    17,    17,    17,    17,     3,     6,
+       9,    11,    17,    13,    17,    17,    17,    17,     3,     6,
       12,    19,    20,    13,     6,    12,    20,    19,     5,     6,
-       7,     8,    19,    13,    19,    19,    19,    19,    13
+       7,     8,     9,    19,    13,    19,    19,    19,    19,    19,
+      13
 };
 
 /* YYR1[RULE-NUM] -- Symbol kind of the left-hand side of rule RULE-NUM.  */
@@ -648,7 +651,7 @@ static const yytype_int8 yyr1[] =
 {
        0,    14,    15,    15,    16,    16,    16,    17,    17,    17,
       17,    17,    17,    17,    17,    18,    18,    19,    19,    19,
-      19,    19,    19,    19,    20,    20
+      19,    19,    19,    19,    19,    20,    20
 };
 
 /* YYR2[RULE-NUM] -- Number of symbols on the right-hand side of rule RULE-NUM.  */
@@ -656,7 +659,7 @@ static const yytype_int8 yyr2[] =
 {
        0,     2,     0,     2,     1,     2,     2,     1,     3,     3,
        3,     3,     4,     3,     3,     1,     2,     1,     3,     3,
-       3,     3,     4,     3,     1,     2
+       3,     3,     3,     4,     3,     1,     2
 };
 
 
@@ -1122,131 +1125,137 @@ yyreduce:
   case 5: /* line: exp '\n'  */
 #line 43 "calc.y"
                    {printf("rpn: %s\n", rpn.c_str()); rpn = ""; if (semantic_error) {printf("error: %s\n", error_message.c_str()); semantic_error = false; error_message = "";} else printf("result: %d\n", yyvsp[-1]);}
-#line 1126 "calc.cpp"
+#line 1129 "calc.cpp"
     break;
 
   case 6: /* line: error '\n'  */
 #line 44 "calc.y"
                      {if (error_message == "") printf("error: invalid syntax\n"); else printf("%s\nerror: %s\n", rpn.c_str(), error_message.c_str()); rpn = ""; error_message = "";}
-#line 1132 "calc.cpp"
+#line 1135 "calc.cpp"
     break;
 
   case 7: /* exp: number  */
 #line 48 "calc.y"
                {rpn += std::to_string(yyvsp[0]) + " "; if (!semantic_error) yyval = yyvsp[0];}
-#line 1138 "calc.cpp"
+#line 1141 "calc.cpp"
     break;
 
   case 8: /* exp: exp '+' exp  */
 #line 49 "calc.y"
                       {rpn += "+ "; if (!semantic_error) yyval = zp_add(yyvsp[-2], yyvsp[0], P);}
-#line 1144 "calc.cpp"
+#line 1147 "calc.cpp"
     break;
 
   case 9: /* exp: exp '-' exp  */
 #line 50 "calc.y"
                       {rpn += "- "; if (!semantic_error) yyval = zp_sub(yyvsp[-2], yyvsp[0], P);}
-#line 1150 "calc.cpp"
+#line 1153 "calc.cpp"
     break;
 
   case 10: /* exp: exp '*' exp  */
 #line 51 "calc.y"
                       {rpn += "* "; if (!semantic_error) yyval = zp_mul(yyvsp[-2], yyvsp[0], P);}
-#line 1156 "calc.cpp"
+#line 1159 "calc.cpp"
     break;
 
   case 11: /* exp: exp '/' exp  */
 #line 52 "calc.y"
                       {rpn += "/ "; if (!semantic_error) {if (yyvsp[0] == 0) {error_message = "division by 0"; semantic_error = true;} else {yyval = zp_div(yyvsp[-2], yyvsp[0], P);}}}
-#line 1162 "calc.cpp"
+#line 1165 "calc.cpp"
     break;
 
   case 12: /* exp: '-' '(' exp ')'  */
 #line 53 "calc.y"
                                       {rpn += "n "; if (!semantic_error) yyval = zp(-1 * yyvsp[-1], P);}
-#line 1168 "calc.cpp"
+#line 1171 "calc.cpp"
     break;
 
   case 13: /* exp: exp '^' exppow  */
 #line 54 "calc.y"
                          {rpn += "^ "; if (!semantic_error) yyval = zp_pow(yyvsp[-2], yyvsp[0], P);}
-#line 1174 "calc.cpp"
+#line 1177 "calc.cpp"
     break;
 
   case 14: /* exp: '(' exp ')'  */
 #line 55 "calc.y"
                       {if (!semantic_error) yyval = yyvsp[-1];}
-#line 1180 "calc.cpp"
+#line 1183 "calc.cpp"
     break;
 
   case 15: /* number: NUM  */
 #line 59 "calc.y"
             {yyval = zp(yyvsp[0], P);}
-#line 1186 "calc.cpp"
+#line 1189 "calc.cpp"
     break;
 
   case 16: /* number: '-' number  */
 #line 60 "calc.y"
                                {yyval = zp(-1 * yyvsp[0], P);}
-#line 1192 "calc.cpp"
+#line 1195 "calc.cpp"
     break;
 
   case 17: /* exppow: numberpow  */
 #line 64 "calc.y"
                   {rpn += std::to_string(yyvsp[0]) + " "; if (!semantic_error) yyval = yyvsp[0];}
-#line 1198 "calc.cpp"
+#line 1201 "calc.cpp"
     break;
 
   case 18: /* exppow: exppow '+' exppow  */
 #line 65 "calc.y"
                             {rpn += "+ "; if (!semantic_error) yyval = zp_add(yyvsp[-2], yyvsp[0], P - 1);}
-#line 1204 "calc.cpp"
+#line 1207 "calc.cpp"
     break;
 
   case 19: /* exppow: exppow '-' exppow  */
 #line 66 "calc.y"
                             {rpn += "- "; if (!semantic_error) yyval = zp_sub(yyvsp[-2], yyvsp[0], P - 1);}
-#line 1210 "calc.cpp"
+#line 1213 "calc.cpp"
     break;
 
   case 20: /* exppow: exppow '*' exppow  */
 #line 67 "calc.y"
                             {rpn += "* "; if (!semantic_error) yyval = zp_mul(yyvsp[-2], yyvsp[0], P - 1);}
-#line 1216 "calc.cpp"
+#line 1219 "calc.cpp"
     break;
 
-  case 21: /* exppow: exppow '/' exppow  */
+  case 21: /* exppow: exppow '^' exppow  */
 #line 68 "calc.y"
-                            {rpn += "/ "; if (!semantic_error) {if (yyvsp[0] == 0) {error_message = "division by 0"; semantic_error = true;} else {int tempx; int tempy; int gcd = extended_euclid(yyvsp[-2], yyvsp[0], &tempx, &tempy); yyvsp[-2] /= gcd; yyvsp[0] /= gcd; if (yyvsp[0] != 1 && (P - 1) % yyvsp[0] == 0) {error_message = "not invertible mod 1234576"; semantic_error = true;} else {yyval = zp_div(yyvsp[-2], yyvsp[0], P - 1);}}}}
-#line 1222 "calc.cpp"
+                            {rpn += "^ "; error_message = "multiple exponent"; semantic_error = true;}
+#line 1225 "calc.cpp"
     break;
 
-  case 22: /* exppow: '-' '(' exppow ')'  */
+  case 22: /* exppow: exppow '/' exppow  */
 #line 69 "calc.y"
-                                       {rpn += "n "; if (!semantic_error) yyval = zp(-1 * yyvsp[-1], P - 1);}
-#line 1228 "calc.cpp"
+                            {rpn += "/ "; if (!semantic_error) {if (yyvsp[0] == 0) {error_message = "division by 0"; semantic_error = true;} else {int tempx; int tempy; int gcd = extended_euclid(yyvsp[-2], yyvsp[0], &tempx, &tempy); yyvsp[-2] /= gcd; yyvsp[0] /= gcd; if (yyvsp[0] != 1 && (P - 1) % yyvsp[0] == 0) {error_message = "not invertible mod 1234576"; semantic_error = true;} else {yyval = zp_div(yyvsp[-2], yyvsp[0], P - 1);}}}}
+#line 1231 "calc.cpp"
     break;
 
-  case 23: /* exppow: '(' exppow ')'  */
+  case 23: /* exppow: '-' '(' exppow ')'  */
 #line 70 "calc.y"
+                                       {rpn += "n "; if (!semantic_error) yyval = zp(-1 * yyvsp[-1], P - 1);}
+#line 1237 "calc.cpp"
+    break;
+
+  case 24: /* exppow: '(' exppow ')'  */
+#line 71 "calc.y"
                          {if (!semantic_error) yyval = yyvsp[-1];}
-#line 1234 "calc.cpp"
+#line 1243 "calc.cpp"
     break;
 
-  case 24: /* numberpow: NUM  */
-#line 74 "calc.y"
-            {yyval = zp(yyvsp[0], P - 1);}
-#line 1240 "calc.cpp"
-    break;
-
-  case 25: /* numberpow: '-' numberpow  */
+  case 25: /* numberpow: NUM  */
 #line 75 "calc.y"
+            {yyval = zp(yyvsp[0], P - 1);}
+#line 1249 "calc.cpp"
+    break;
+
+  case 26: /* numberpow: '-' numberpow  */
+#line 76 "calc.y"
                                   {yyval = zp(-1 * yyvsp[0], P - 1);}
-#line 1246 "calc.cpp"
+#line 1255 "calc.cpp"
     break;
 
 
-#line 1250 "calc.cpp"
+#line 1259 "calc.cpp"
 
       default: break;
     }
@@ -1439,7 +1448,7 @@ yyreturnlab:
   return yyresult;
 }
 
-#line 78 "calc.y"
+#line 79 "calc.y"
 
 
 int extended_euclid(int a, int b, int* x, int* y) {

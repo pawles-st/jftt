@@ -28,8 +28,8 @@ bool semantic_error = false;
 %token ERR
 %left '+' '-'
 %left '*' '/'
-%precedence NEG
 %right '^'
+%precedence NEG
 
 %%
 
@@ -65,6 +65,7 @@ exppow:
 	| exppow '+' exppow {rpn += "+ "; if (!semantic_error) $$ = zp_add($1, $3, P - 1);}
 	| exppow '-' exppow {rpn += "- "; if (!semantic_error) $$ = zp_sub($1, $3, P - 1);}
 	| exppow '*' exppow {rpn += "* "; if (!semantic_error) $$ = zp_mul($1, $3, P - 1);}
+	| exppow '^' exppow {rpn += "^ "; error_message = "multiple exponent"; semantic_error = true;}
 	| exppow '/' exppow {rpn += "/ "; if (!semantic_error) {if ($3 == 0) {error_message = "division by 0"; semantic_error = true;} else {int tempx; int tempy; int gcd = extended_euclid($1, $3, &tempx, &tempy); $1 /= gcd; $3 /= gcd; if ($3 != 1 && (P - 1) % $3 == 0) {error_message = "not invertible mod 1234576"; semantic_error = true;} else {$$ = zp_div($1, $3, P - 1);}}}}
 	| '-' '(' exppow ')' %prec NEG {rpn += "n "; if (!semantic_error) $$ = zp(-1 * $3, P - 1);}
 	| '(' exppow ')' {if (!semantic_error) $$ = $2;}
