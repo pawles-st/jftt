@@ -3,15 +3,23 @@ use std::io;
 
 use lalrpop_util::lalrpop_mod;
 use grammar::ProgramAllParser;
+use translation::translate;
 
 pub mod err;
 pub mod ast;
+pub mod translation;
 lalrpop_mod!(pub grammar);
 
 fn main() -> io::Result<()> {
     let program = fs::read_to_string("../example3.imp")?;
     match ProgramAllParser::new().parse(&program) {
-        Ok(ast) => println!("parsing succeeded!\n{:?}", ast),
+        Ok(ast) => {
+            println!("Parsing succeeded!\nAST: {:?}", ast);
+            match translate(ast) {
+                Ok(code) => println!("Translated code:\n{}", code),
+                Err(e) => eprintln!("Error: {:?}", e),
+            }
+        },
         Err(e) => eprintln!("Error: {:?}", e),
     }
     //let test = fs::read_to_string("../bignumber.imp")?;

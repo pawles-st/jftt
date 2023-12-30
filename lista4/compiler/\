@@ -1,0 +1,142 @@
+use crate::ast::*;
+use translation_structures::*;
+
+mod translation_structures;
+
+fn malloc(mut curr_mem_byte: u64, decls: &Declarations, symbol_table: &mut SymbolTable) -> Result<u64, TranslationError> {
+    for decl in decls {
+        match decl {
+            Declaration::Var(pid) => {
+                if symbol_table.contains_key(pid) {
+                    return Err(TranslationError::RepeatedDeclaration);
+                } else {
+                    symbol_table.insert(pid.to_string(), SymbolTableEntry::Var(Variable::new(curr_mem_byte)));
+                    curr_mem_byte += 1;
+                }
+            },
+            Declaration::Arr(pid, len) => {
+                if symbol_table.contains_key(pid) {
+                    return Err(TranslationError::RepeatedDeclaration);
+                } else {
+                    symbol_table.insert(pid.to_string(), SymbolTableEntry::Arr(Array::new(curr_mem_byte, *len)));
+                    curr_mem_byte += *len;
+                }
+            },
+        }
+    }
+    return Ok(curr_mem_byte);
+}
+
+/*
+fn fetch_identifier(id: &Identifier, symbol_table: &SymbolTable) -> Result<SymbolTableEntry, TranslationError> {
+    match id {
+        Identifier::Pid(varname) => {
+            if let Some(&entry) = symbol_table.get(varname) {
+                if matches!(entry, SymbolTableEntry::Var{..}) {
+                    return Ok(entry);
+                } else {
+                    return Err(TranslationError::NoArrayIndex);
+                }
+            } else {
+                return Err(TranslationError::NoVariableDefined);
+            }
+        },
+        Identifier::ArrNum(arrname, idx) => {
+            if let Some(&entry) = symbol_table.get(arrname) {
+                if matches!(entry, SymbolTableEntry::Arr{..}) {
+                    return Ok(entry);
+                } else {
+                    return Err(TranslationError::NotAnArray);
+                }
+            } else {
+                return Err(TranslationError::NoVariableDefined);
+            }
+        },
+        Identifier::ArrPid(arrname, idx_varname) => {
+            if let Some(&arr_entry, &idx_entry) = (symbol_table.get(arrname), symbol_table.get(idx_varname)) {
+                if matches!(arr_entry, SymbolTableEntry::Arr{..}) {
+                    if matches!(idx_entry, SymbolTableEntry::Var{..}) {
+                        return Ok()
+                    }
+                }
+            } else {
+                return Err(TranslationError::NoVariableDefined);
+            }
+        }
+    }
+}
+*/
+
+fn translate_load_const(value: u64) -> String {
+    return (0..value)
+        .fold(String::new(), |mut code, _| {
+            code += "INC b\n";
+            code
+        });
+}
+
+fn translate_fetch_pid(varname: &Pidentifier, symbol_table: &SymbolTable) -> Result<String, TranslationError> {
+    if let Some(entry) = symbol_table.get(varname) {
+        if let SymbolTableEntry::Var(var) = entry {
+            return Ok(translate_load_const(var.memloc));
+        } else {
+            return Err(TranslationError::NotAnArray);
+        }
+    } else {
+        return Err(TranslationError::NoVariableDefined);
+    }
+}
+
+fn translate_fetch(id: &Identifier, symbol_table: &SymbolTable) -> Result<String, TranslationError> {
+    match id {
+        Identifier::Pid(varname) => {
+            match translate_fetch_pid(&varname, symbol_table) {
+                Ok(code) => return Ok(code),
+                Err(e) => return Err(e),
+            }
+        },
+        Identifier::ArrNum(arrname, idx) => {
+            match translate_fetch_arrnum(&arrname, idx, symbol_table) {
+                Ok(code) => return Ok(code),
+                Err(e) => return Err(e),
+            }
+        },
+        Identifier::ArrPid(arrname, idx_varname) => {
+            match translate_fetch_arrpid(&arrname, &idx_varname, symbol_table) {
+                Ok(code) => return Ok(code),
+                Err(e) => return Err(e),
+            }
+        }
+    }
+}
+
+fn translate_assignment(id: &Identifier, expr: &Expression, symbol_table: &SymbolTable) -> Result<String, TranslationError> {
+    if let Ok(fetch_code) = translate_fetch(id, symbol_table) {
+
+    }
+}
+
+fn translate_commands(commands: &Commands, symbol_table: &SymbolTable) -> Result<String, TranslationError> {
+    let mut translated_code = String::new();
+    for command in commands {
+        match command {
+            Command::Assignment(id, expr) => {
+                if let Ok(code) = translate_assignment(id, expr, symbol_table) {
+                    translated_code += &code;
+                } else {
+                    return Err(TranslationError::Temp);
+                }
+            },
+        }
+    }
+    return Ok(translated_code);
+}
+
+pub fn translate(ast: ProgramAll) -> String {
+    let mut symbol_table = SymbolTable::new();
+    
+    let _next_mem_byte = malloc(0, &ast.main.declarations, &mut symbol_table);
+    println!("{:?}", symbol_table);
+    let _code = translate_commands(&ast.main.commands, &symbol_table);
+    return String::new();
+}

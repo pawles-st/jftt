@@ -1,7 +1,7 @@
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ProgramAll {
-    procedures: Procedures,
-    main: Main,
+    pub procedures: Procedures,
+    pub main: Main,
 }
 
 impl ProgramAll {
@@ -14,9 +14,9 @@ pub type Procedures = Vec<Procedure>;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Procedure {
-    proc_head: ProcHead,
-    declarations: Declarations,
-    commands: Commands,
+    pub proc_head: ProcHead,
+    pub declarations: Declarations,
+    pub commands: Commands,
 }
 
 impl Procedure {
@@ -27,8 +27,8 @@ impl Procedure {
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Main {
-    declarations: Declarations,
-    commands: Commands,
+    pub declarations: Declarations,
+    pub commands: Commands,
 }
 
 impl Main {
@@ -53,8 +53,8 @@ pub enum Command {
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ProcHead {
-    name: Pidentifier,
-    args_decl: ArgumentDeclarations,
+    pub name: Pidentifier,
+    pub args_decl: ArgumentDeclarations,
 }
 
 impl ProcHead {
@@ -65,8 +65,8 @@ impl ProcHead {
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ProcCall {
-    name: Pidentifier,
-    args: Arguments,
+    pub name: Pidentifier,
+    pub args: Arguments,
 }
 
 impl ProcCall {
