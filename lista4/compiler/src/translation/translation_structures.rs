@@ -1,3 +1,16 @@
+pub fn add_command(code: &mut Vec<String>, command: &str) {
+    code.push(String::from(command));
+}
+
+pub fn add_command_string(code: &mut Vec<String>, command: String) {
+    code.push(command);
+}
+
+pub fn add_comment(code: &mut Vec<String>, comment: &str) {
+    code[0] +=  " # ";
+    code[0] += comment;
+}
+
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Register {
     A,
@@ -25,7 +38,7 @@ pub fn register_to_string<'a>(r: &'a Register) -> &'a str {
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum TranslationError {
-    NoVariableDefined,
+    NoSuchVariable,
     RepeatedDeclaration,
     NotAnArray,
     NoArrayIndex,
@@ -49,9 +62,21 @@ impl Array {
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Variable {
     pub memloc: u64,
+    pub is_ref: bool,
 }
 
 impl Variable {
+    pub fn new(ml: u64, ir: bool) -> Self {
+        return Self{memloc: ml, is_ref: ir};
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct ReturnLocation {
+    pub memloc: u64,
+}
+
+impl ReturnLocation {
     pub fn new(ml: u64) -> Self {
         return Self{memloc: ml};
     }
@@ -61,6 +86,7 @@ impl Variable {
 pub enum SymbolTableEntry {
     Var(Variable),
     Arr(Array),
+    Ret(ReturnLocation),
 }
 
 pub type SymbolTable = HashMap<String, SymbolTableEntry>;

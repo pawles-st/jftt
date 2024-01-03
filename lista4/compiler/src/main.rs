@@ -11,12 +11,12 @@ pub mod translation;
 lalrpop_mod!(pub grammar);
 
 fn main() -> io::Result<()> {
-    let program = fs::read_to_string("../example3.imp")?;
+    let program = fs::read_to_string("../example1.imp")?;
     match ProgramAllParser::new().parse(&program) {
         Ok(ast) => {
             println!("Parsing succeeded!\nAST: {:?}", ast);
             match translate(ast) {
-                Ok(code) => println!("Translated code:\n{}", code),
+                Ok(code) => println!("Translated code:\n{:?}", code.join("\n")),
                 Err(e) => eprintln!("Error: {:?}", e),
             }
         },
