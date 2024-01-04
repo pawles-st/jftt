@@ -85,7 +85,7 @@ pub enum Declaration {
 
 pub type ArgumentDeclarations = Vec<ArgumentDeclaration>;
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum ArgumentDeclaration {
     Var(Pidentifier),
     Arr(Pidentifier),

@@ -1,8 +1,51 @@
+use std::iter::zip;
 use crate::ast::*;
 use translation_structures::*;
 
 mod translation_structures;
 mod tests;
+
+// create an entry in the function table for the proc_head
+fn malloc_proc(proc_head: &ProcHead, function_table: &mut FunctionTable, start_addr: usize, curr_mem_byte: u64) -> Result<(), TranslationError> {
+    let proc_name = proc_head.name.to_owned();
+
+    // check if the procedure name is unique...
+
+    if function_table.contains_key(&proc_name) {
+        return Err(TranslationError::RepeatedDeclaration);
+    }
+
+    // ...if so, add the proc_name and args_decl to the function_table
+
+    function_table.insert(proc_name, ProcedureInfo::new(proc_head.args_decl.clone(), start_addr, curr_mem_byte));
+
+    Ok(())
+}
+
+// create an entry in the symbol table for each variable and array reference
+fn malloc_args(mut curr_mem_byte: u64, decls: &ArgumentDeclarations, symbol_table: &mut SymbolTable) -> Result<u64, TranslationError> {
+    for decl in decls {
+        match decl {
+            ArgumentDeclaration::Var(pid) => {
+                if symbol_table.contains_key(pid) {
+                    return Err(TranslationError::RepeatedDeclaration);
+                } else {
+                    symbol_table.insert(pid.to_owned(), SymbolTableEntry::Var(Variable::new(curr_mem_byte, true)));
+                    curr_mem_byte += 1;
+                }
+            },
+            ArgumentDeclaration::Arr(pid) => {
+                if symbol_table.contains_key(pid) {
+                    return Err(TranslationError::RepeatedDeclaration);
+                } else {
+                    symbol_table.insert(pid.to_owned(), SymbolTableEntry::Arr(Array::new(curr_mem_byte, 0, true)));
+                    curr_mem_byte += 1;
+                }
+            }
+        }
+    }
+    return Ok(curr_mem_byte);
+}
 
 // create an entry in the symbol table for each variable and array declaration
 fn malloc(mut curr_mem_byte: u64, decls: &Declarations, symbol_table: &mut SymbolTable) -> Result<u64, TranslationError> {
@@ -12,7 +55,7 @@ fn malloc(mut curr_mem_byte: u64, decls: &Declarations, symbol_table: &mut Symbo
                 if symbol_table.contains_key(pid) {
                     return Err(TranslationError::RepeatedDeclaration);
                 } else {
-                    symbol_table.insert(pid.to_string(), SymbolTableEntry::Var(Variable::new(curr_mem_byte)));
+                    symbol_table.insert(pid.to_owned(), SymbolTableEntry::Var(Variable::new(curr_mem_byte, false)));
                     curr_mem_byte += 1;
                 }
             },
@@ -20,7 +63,7 @@ fn malloc(mut curr_mem_byte: u64, decls: &Declarations, symbol_table: &mut Symbo
                 if symbol_table.contains_key(pid) {
                     return Err(TranslationError::RepeatedDeclaration);
                 } else {
-                    symbol_table.insert(pid.to_string(), SymbolTableEntry::Arr(Array::new(curr_mem_byte, *len)));
+                    symbol_table.insert(pid.to_owned(), SymbolTableEntry::Arr(Array::new(curr_mem_byte, *len, false)));
                     curr_mem_byte += *len;
                 }
             },
@@ -54,69 +97,124 @@ fn translate_load_const(value: Num, register: &Register) -> Vec<String> {
 }
 
 // fetch the address of a Pidentifier into the register of choice
+// NOTICE: erases the contents of registers A and B
+// TODO: replace register B with the register of choice?
 fn translate_fetch_pid(varname: &Pidentifier, register: &Register, symbol_table: &SymbolTable) -> Result<Vec<String>, TranslationError> {
+    let mut code = Vec::new();
 
     // check if the varname exists in the symbol table...
 
     if let Some(entry) = symbol_table.get(varname) {
 
-        // ...and whether it's not an array...
+        // ...and whether it's not an array
 
         if let SymbolTableEntry::Var(var) = entry {
 
-            let mut code = Vec::new();
+            // next, check whether the variable holds a reference...
 
-            // ...if so, then load its address into the specified register
+            if var.is_ref {
 
-            let mut pid_address_code = translate_load_const(var.memloc, register);
-            code.append(&mut pid_address_code);
+                // ...if so, load the reference's address into register B
 
-            let comment = "fetching ".to_owned() + varname + "'s address into register " + register_to_string(register);
-            add_comment(&mut code, &comment);
+                let mut ref_address_code = translate_load_const(var.memloc, &Register::B);
+                code.append(&mut ref_address_code);
 
-            return Ok(code);
+                let comment = varname.to_owned() + " IS ref; indirectly fetching address into register " + register_to_string(register);
+                add_comment(&mut code, &comment);
+
+                // next, load the value stored under the reference's address
+                // into register A - that is the original variables's address
+
+                add_command(&mut code, "LOAD b");
+
+                // if the resulting address is to be stored in a register other than A, move it
+
+                code.append(&mut move_value_code(register));
+            } else {
+
+                // ..otherwise, load the address directly into the specified register
+
+                let mut pid_address_code = translate_load_const(var.memloc, register);
+                code.append(&mut pid_address_code);
+
+                let comment = varname.to_owned() + " is NOT ref; directly fetching address into register " + register_to_string(register);
+                add_comment(&mut code, &comment);
+            }
         } else {
             return Err(TranslationError::NotAnArray);
         }
     } else {
         return Err(TranslationError::NoSuchVariable);
     }
+    return Ok(code);
 }
 
 // fetch the address of a specified array element into the register of choice
+// NOTICE: erases the contents of registers A and B
+// TODO: replace register B with the register of choice?
 // TODO: array bound checking
 fn translate_fetch_arrnum(arrname: &Pidentifier, idx: Num, register: &Register, symbol_table: &SymbolTable) -> Result<Vec<String>, TranslationError> {
+    let mut code = Vec::new();
 
     // check if the arrname exists in the symbol table...
 
     if let Some(entry) = symbol_table.get(arrname) {
 
-        // ...and assert it is an array...
+        // ...and assert it is an array
 
         if let SymbolTableEntry::Arr(arr) = entry {
 
-            let mut code = Vec::new();
+            // next, check whether the variable holds a reference...
 
-            // ...if so, then load the address of the idx-th entry into the specified register
-           
-            let mut arrnum_address_code = translate_load_const(arr.memloc + idx, register);
-            code.append(&mut arrnum_address_code);
+            if arr.is_ref {
 
-            let comment = "fetching ".to_owned() + arrname + "[" + &idx.to_string() + "]'s address into register" + register_to_string(register);
-            add_comment(&mut code, &comment);
+                // if so, load the reference's address into register B
 
-            return Ok(code);
+                let mut ref_address_code = translate_load_const(arr.memloc, &Register::B);
+                code.append(&mut ref_address_code);
+
+                let comment = arrname.to_owned() + "IS array ref; indirectly fetching address into register " + register_to_string(register);
+                add_comment(&mut code, &comment);
+
+                // next, load the value stored under the reference's address
+                // into register A - that is the array's beginning address
+
+                add_command(&mut code, "LOAD b");
+
+                // load the array index into register B
+
+                let mut idx_load_code = translate_load_const(idx, &Register::B);
+                code.append(&mut idx_load_code);
+
+                // add the two together to get the final address
+
+                add_command(&mut code, "ADD b");
+
+                // if the resulting address is to be stored in a register other than A, move it
+
+                code.append(&mut move_value_code(register));
+            } else {
+                
+                // ..otherwise, load the address directly into the specified register
+
+                let mut arrnum_address_code = translate_load_const(arr.memloc + idx, register);
+                code.append(&mut arrnum_address_code);
+
+                let comment = arrname.to_owned() + "is NOT array ref; directly fetching address into register " + register_to_string(register);
+                add_comment(&mut code, &comment);
+            }
         } else {
             return Err(TranslationError::NoArrayIndex);
         }
     } else {
         return Err(TranslationError::NoSuchVariable);
     }
+    return Ok(code);
 }
 
 // fetch the address of an array entry with index equal to the value
 // of the indexing variable and store it in the register of choice
-// NOTICE: erases the contents of registers A and B
+// NOTICE: erases the contents of registers A, B and E
 // TODO: replace register B with the register of choice?
 fn translate_fetch_arrpid(arrname: &Pidentifier, idx_varname: &Pidentifier, register: &Register, symbol_table: &SymbolTable) -> Result<Vec<String>, TranslationError> {
     let mut code = Vec::new();
@@ -129,18 +227,26 @@ fn translate_fetch_arrpid(arrname: &Pidentifier, idx_varname: &Pidentifier, regi
     let comment = "fetching ".to_owned() + arrname + "[" + idx_varname + "]'s address into register " + register_to_string(register);
     add_comment(&mut code, &comment);
 
-    // ...and then load its value into register A
+    // ...then load its value into register A...
 
     add_command(&mut code, "LOAD b");
+
+    // ...and temporarily move to register E
+
+    add_command(&mut code, "PUT e");
 
     // next, load the array address into register B
    
     let mut fetch_arr_code = translate_fetch_arrnum(arrname, 0, &Register::B, symbol_table)?;
     code.append(&mut fetch_arr_code);
 
+    // move the indexing variable's value back to register A
+
+    add_command(&mut code, "GET e");
+
     // finally, add the address of the array in register B to the value of the
     // indexing variable in register A to get the final address
-    
+
     let mut offset_code = Vec::new();
     add_command(&mut offset_code, "ADD b");
 
@@ -215,6 +321,39 @@ fn translate_val(value: &Value, register: &Register, symbol_table: &SymbolTable)
     }
 }
 
+// return from the procedure to the caller
+fn translate_return(symbol_table: &SymbolTable) -> Result<Vec<String>, TranslationError> {
+    let mut code = Vec::new();
+
+    // assert the return location object has been stored in the symbol table...
+
+    if let Some(ret) = symbol_table.get(".return") {
+
+        // ...and that it is of a correct type
+
+        if let SymbolTableEntry::Ret(return_location) = ret {
+
+            // if so, load the value stored under the return address...
+
+            let mut ret_addr_code = translate_load_const(return_location.memloc, &Register::B);
+            code.append(&mut ret_addr_code);
+            add_command(&mut code, "LOAD b");
+
+            let comment = "return to the caller";
+            add_comment(&mut code, comment);
+
+            // ...and jump to the line number equal to this value
+
+            add_command(&mut code, "JUMPR a");
+        } else {
+            panic!("Expected return address object in the symbol table, found {:?}", ret);
+        }
+    } else {
+        return Err(TranslationError::NoReturnAddress);
+    }
+    return Ok(code);
+}
+
 // perform an add Expression for lhs and rhs Values and store the result in the register of choice
 // NOTICE: erases the contents of registers A, B, C, and D
 fn translate_add_expr(lhs: &Value, rhs: &Value, register: &Register, symbol_table: &SymbolTable) -> Result<Vec<String>, TranslationError> {
@@ -284,12 +423,10 @@ fn translate_sub_expr(lhs: &Value, rhs: &Value, register: &Register, symbol_tabl
 }
 
 // perform the mul Expression for lhs and rhs Values and store the result in the register of choice
-// TODO: finish this
-// TODO: count lines for jumps!
 // TODO: move end check just before final two shifts?
 // TODO: optimise multiplication by a constant
 // NOTICE: erases the contents of registers A, B, C and D
-fn translate_mul_expr(lhs: &Value, rhs: &Value, register: &Register, symbol_table: &SymbolTable, curr_line: usize) -> Result<Vec<String>, TranslationError> {
+fn translate_mul_expr(lhs: &Value, rhs: &Value, register: &Register, symbol_table: &SymbolTable, mut curr_line: usize) -> Result<Vec<String>, TranslationError> {
     let mut code = Vec::new();
 
     // load the lhs value into register C, and rhs value into register D
@@ -299,6 +436,8 @@ fn translate_mul_expr(lhs: &Value, rhs: &Value, register: &Register, symbol_tabl
 
     let mut rhs_code = translate_val(rhs, &Register::D, symbol_table)?;
     code.append(&mut rhs_code);
+    
+    curr_line += code.len();
 
     // then multiply them and move the result into the register of choice
 
@@ -322,22 +461,6 @@ fn translate_mul_expr(lhs: &Value, rhs: &Value, register: &Register, symbol_tabl
     add_command_string(&mut code, "JUMP ".to_owned() + &mul_loop_line);
     // end_loop_line
 
-    /*
-    code += "JZERO 'end\n";
-    code += "SHR d\n";
-    code += "SHL d\n";
-    code += "SUB d\n";
-    code += "JZERO after_add\n";
-    code += "GET b\n";
-    code += "ADD c\n";
-    code += "PUT b\n";
-    code += "'after_add:\n";
-    code += "SHL c\n";
-    code += "SHR d\n";
-    code += "JUMP 'mul_loop\n";
-    code += "'end:\n";
-    */
-    
     // if the result is to be stored in a register other than B, move it
 
     if !matches!(register, Register::B) {
@@ -406,9 +529,132 @@ fn translate_assignment(id: &Identifier, expr: &Expression, symbol_table: &Symbo
     return Ok(code);
 }
 
-// call 
-fn translate_proc_call(name: &Pidentifier, args: &Arguments, symbol_table: &SymbolTable, curr_line: usize) -> Result<Vec<String>, TranslationError> {
-    return Err(TranslationError::Temp);
+fn translate_store_var_reference(arg_memloc: u64, is_ref: bool, store_memloc: u64) -> Vec<String> {
+    let mut code = Vec::new();
+
+    if is_ref {
+
+        // if the variable is a reference, first load the reference's address into register B...
+
+        println!("arg = {}", arg_memloc);
+        let mut fetch_ref_code = translate_load_const(arg_memloc, &Register::B);
+        code.append(&mut fetch_ref_code);
+
+        // ...and then fetch the value stored under it (original var's address) into register A
+
+        add_command(&mut code, "LOAD b");
+
+        // load the store memory location into register B
+
+        println!("store = {}", arg_memloc);
+        let mut fetch_store_code = translate_load_const(store_memloc, &Register::B);
+        code.append(&mut fetch_store_code);
+
+        // store the original variable's address
+
+        add_command(&mut code, "STORE b");
+    } else {
+
+        // if the variable isn't a reference, load the variable's address into register A
+
+        println!("arg = {}", arg_memloc);
+        let mut fetch_var_code = translate_load_const(arg_memloc, &Register::A);
+        code.append(&mut fetch_var_code);
+
+        // load the store memory location into register B
+
+        println!("store = {}", arg_memloc);
+        let mut fetch_store_code = translate_load_const(store_memloc, &Register::B);
+        code.append(&mut fetch_store_code);
+
+        // store the variable's address
+
+        add_command(&mut code, "STORE b");
+    }
+    return code;
+}
+
+// call a procedure with given arguments
+fn translate_proc_call(name: &Pidentifier, args: &Arguments, symbol_table: &SymbolTable, function_table: &FunctionTable, curr_line: usize, curr_proc: Option<&Pidentifier>) -> Result<Vec<String>, TranslationError> {
+    let mut code = Vec::new();
+
+    // check for a recursive call
+
+    if let Some(curr_proc_name) = curr_proc {
+        if name == curr_proc_name {
+            return Err(TranslationError::RecurrenceNotAllowed);
+        }
+    }
+
+    // fetch the destination procedure information from the function table
+
+    if let Some(proc_info) = function_table.get(name) {
+
+        // check if the number of arguments matches the number
+        // of parameters of the destination procedure
+
+        if args.len() != proc_info.args_decl.len() {
+            return Err(TranslationError::InvalidNumberOfArguments);
+        }
+
+        // check if the type of each argument matches
+        // the type of the destination procedure parameter
+
+        println!("proc: {}", name);
+        for (arg_no, (arg_name, arg_decl)) in zip(args, &proc_info.args_decl).enumerate() {
+            println!("{}", arg_no);
+            if let Some(arg_entry) = symbol_table.get(arg_name) {
+
+                // check type equality
+
+                if matches!(arg_decl, ArgumentDeclaration::Var{..}) {
+                    if let SymbolTableEntry::Var(arg) = arg_entry { // both are variables
+
+                        // store the variable reference
+
+                        let mut store_addr_code = translate_store_var_reference(arg.memloc, arg.is_ref, proc_info.mem_addr + 1 + arg_no as u64);
+                        code.append(&mut store_addr_code);
+                    } else {
+                        return Err(TranslationError::VariableExpected);
+                    }
+                } else if matches!(arg_decl, ArgumentDeclaration::Arr{..}) {
+                    if let SymbolTableEntry::Arr(arg) = arg_entry { // both are arrays
+                        
+                        // store the variable reference
+
+                        let mut store_addr_code = translate_store_var_reference(arg.memloc, arg.is_ref, proc_info.mem_addr + 1 + arg_no as u64);
+                        code.append(&mut store_addr_code);
+
+                    } else {
+                        return Err(TranslationError::ArrayExpected);
+                    }
+                } else {
+                    panic!("Invalid argument declaration type in the symbol table");
+                }
+            } else {
+                return Err(TranslationError::NoSuchVariable);
+            }
+        }
+
+        // store the return address
+
+        let mut store_addr = translate_load_const(proc_info.mem_addr, &Register::B);
+        code.append(&mut store_addr);
+
+        println!("{} -> {}", name, curr_line);
+        let mut ret_value = translate_load_const((curr_line + 1) as u64, &Register::A);
+        code.append(&mut ret_value);
+
+        add_command(&mut code, "STORE b");
+
+        // jump to the address that begins the procedure
+
+        add_command_string(&mut code, "JUMP ".to_owned() + &proc_info.start_addr.to_string());
+        
+    } else {
+        return Err(TranslationError::NoSuchProcedure);
+    }
+    return Ok(code);
 }
 
 // read user-inputted value and store it at the address of the Identifier
@@ -426,7 +672,7 @@ fn translate_read(id: &Identifier, symbol_table: &SymbolTable) -> Result<Vec<Str
 
     // store the read value under the address of the Identifier
 
-    add_command(&mut code, "STORE");
+    add_command(&mut code, "STORE b");
 
     return Ok(code);
 }
@@ -448,7 +694,7 @@ fn translate_write(value: &Value, symbol_table: &SymbolTable) -> Result<Vec<Stri
 }
 
 // generate appropriate virtual machine code for the specified commands
-fn translate_commands(commands: &Commands, symbol_table: &SymbolTable, curr_line: usize) -> Result<Vec<String>, TranslationError> {
+fn translate_commands(commands: &Commands, symbol_table: &SymbolTable, function_table: &FunctionTable, curr_line: usize, curr_proc: Option<&Pidentifier>) -> Result<Vec<String>, TranslationError> {
     let mut code = Vec::new();
 
     for command in commands {
@@ -463,7 +709,7 @@ fn translate_commands(commands: &Commands, symbol_table: &SymbolTable, curr_line
                 code.append(&mut command_code);
             },
             Command::ProcedureCall(proc_call) => {
-                let mut command_code = translate_proc_call(proc_call.name, proc_call.args, symbol_table, curr_line + code.len())?;
+                let mut command_code = translate_proc_call(&proc_call.name, &proc_call.args, symbol_table, function_table, curr_line + code.len(), curr_proc)?;
                 let comment = "--- ".to_owned() + &format!("{:?}", command) + " ---";
                 add_comment(&mut command_code, &comment);
                 code.append(&mut command_code);
@@ -486,29 +732,100 @@ fn translate_commands(commands: &Commands, symbol_table: &SymbolTable, curr_line
     return Ok(code);
 }
 
-fn translate_procedure(procedure: &Procedure) -> Result<Vec<String>, TranslationError> {
-    
-}
+fn translate_procedure(procedure: &Procedure, function_table: &mut FunctionTable, mut curr_mem_byte: u64, curr_line: usize) -> Result<(Vec<String>, u64), TranslationError> {
+    let mut code = Vec::new();
 
-pub fn translate(ast: ProgramAll) -> Result<Vec<String>, TranslationError> {
-    //let mut code = Vec::new();
+    // add the procedure to the function table
 
-    //let mut function_table = None;
+    malloc_proc(&procedure.proc_head, function_table, curr_line, curr_mem_byte)?;
 
-    for procedure in ast.procedures {
-        translate_procedure(&procedure);
-    }
-    
+    // create the procedure's symbol table
+
     let mut symbol_table = SymbolTable::new();
 
-    // add all Main declaration to the symbol table
+    // insert the return address object into the symbol table
+
+    symbol_table.insert(".return".to_owned(), SymbolTableEntry::Ret(ReturnLocation::new(curr_mem_byte)));
+    curr_mem_byte += 1;
+
+    // allocate memory for the argument references and procedure declarations
+
+    let curr_mem_byte = malloc_args(curr_mem_byte, &procedure.proc_head.args_decl, &mut symbol_table)?;
+    let next_mem_byte = malloc(curr_mem_byte, &procedure.declarations, &mut symbol_table)?;
+    println!("{} Symbol table: {:?}", &procedure.proc_head.name, symbol_table);
+
+    // translate the procedure commands
+
+    let mut proc_code = translate_commands(&procedure.commands, &symbol_table, &function_table, curr_line, Some(&procedure.proc_head.name))?;
+    code.append(&mut proc_code);
+
+    // attach return code
+
+    let mut ret_code = translate_return(&symbol_table)?;
+    code.append(&mut ret_code);
+
+    return Ok((code, next_mem_byte));
+}
+
+fn translate_main(main: &Main, function_table: &FunctionTable, curr_mem_byte: u64, curr_line: usize) -> Result<Vec<String>, TranslationError> {
+    let mut code = Vec::new();
+
+    // create main's symbol table
+
+    let mut symbol_table = SymbolTable::new();
+
+    // allocate memory for the declarations
     
-    let _next_mem_byte = malloc(0, &ast.main.declarations, &mut symbol_table)?;
-    println!("Symbol table: {:?}", symbol_table);
+    let _next_mem_byte = malloc(curr_mem_byte, &main.declarations, &mut symbol_table)?;
+    println!("Main Symbol table: {:?}", symbol_table);
 
-    // translate the code inside Main
+    // translate the Main commands
 
-    let mut code = translate_commands(&ast.main.commands, &symbol_table, 0)?;
+    let mut main_code = translate_commands(&main.commands, &symbol_table, function_table, curr_line, None)?;
+    code.append(&mut main_code);
+
+    return Ok(code);
+
+}
+
+// TODO: check variable initialisation
+pub fn translate(ast: ProgramAll) -> Result<Vec<String>, TranslationError> {
+    let mut procedures_code = Vec::new();
+
+    let mut function_table = FunctionTable::new();
+    let mut curr_mem_byte = 0;
+
+    // translate the procedures into code
+
+    for procedure in ast.procedures {
+
+        // translate the the procedure
+
+        let (mut proc_code, next_mem_byte) = translate_procedure(&procedure, &mut function_table, curr_mem_byte, procedures_code.len())?;
+        add_comment(&mut proc_code, &procedure.proc_head.name);
+        procedures_code.append(&mut proc_code);
+
+        // update the location of the next free memory byte
+
+        curr_mem_byte = next_mem_byte;
+    }
+
+    // jump to main
+
+    let main_jump_code = "JUMP ".to_owned() + &(procedures_code.len() + 1).to_string();
+    let mut code = vec![main_jump_code];
+
+    // append procedures' code
+
+    code.append(&mut procedures_code);
+
+    // translate main into code
+
+    let mut main_code = translate_main(&ast.main, &function_table, curr_mem_byte, code.len())?;
+    add_comment(&mut main_code, ">>> Main <<<");
+    code.append(&mut main_code);
+
+    // some simple verifications of the code
 
     for i in 0..code.len() {
         if code[i].starts_with("#") {
@@ -519,7 +836,7 @@ pub fn translate(ast: ProgramAll) -> Result<Vec<String>, TranslationError> {
         }
     }
 
-    // if the code is correct, halt the program
+    // finish the program
 
     add_command(&mut code, "HALT");
 

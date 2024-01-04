@@ -1,3 +1,5 @@
+use crate::ast::ArgumentDeclarations;
+
 pub fn add_command(code: &mut Vec<String>, command: &str) {
     code.push(String::from(command));
 }
@@ -39,9 +41,16 @@ pub fn register_to_string<'a>(r: &'a Register) -> &'a str {
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum TranslationError {
     NoSuchVariable,
+    NoSuchProcedure,
     RepeatedDeclaration,
     NotAnArray,
     NoArrayIndex,
+    ArrayExpected,
+    VariableExpected,
+    RecurrenceNotAllowed,
+    InvalidNumberOfArguments,
+    NoReturnAddress,
+    InvalidReturnAddress,
     Temp,
 }
 
@@ -51,11 +60,12 @@ use std::collections::HashMap;
 pub struct Array {
     pub memloc: u64,
     pub len: u64,
+    pub is_ref: bool,
 }
 
 impl Array {
-    pub fn new(ml: u64, l: u64) -> Self {
-        return Self{memloc: ml, len: l};
+    pub fn new(ml: u64, l: u64, ir: bool) -> Self {
+        return Self{memloc: ml, len: l, is_ref: ir};
     }
 }
 
@@ -90,3 +100,17 @@ pub enum SymbolTableEntry {
 }
 
 pub type SymbolTable = HashMap<String, SymbolTableEntry>;
+
+pub struct ProcedureInfo {
+    pub args_decl: ArgumentDeclarations,
+    pub start_addr: usize,
+    pub mem_addr: u64,
+}
+
+impl ProcedureInfo {
+    pub fn new(ad: ArgumentDeclarations, sa: usize, ma: u64) -> Self {
+        return Self{args_decl: ad, start_addr: sa, mem_addr: ma};
+    }
+}
+
+pub type FunctionTable = HashMap<String, ProcedureInfo>;
