@@ -536,7 +536,6 @@ fn translate_store_var_reference(arg_memloc: u64, is_ref: bool, store_memloc: u6
 
         // if the variable is a reference, first load the reference's address into register B...
 
-        println!("arg = {}", arg_memloc);
         let mut fetch_ref_code = translate_load_const(arg_memloc, &Register::B);
         code.append(&mut fetch_ref_code);
 
@@ -546,7 +545,6 @@ fn translate_store_var_reference(arg_memloc: u64, is_ref: bool, store_memloc: u6
 
         // load the store memory location into register B
 
-        println!("store = {}", arg_memloc);
         let mut fetch_store_code = translate_load_const(store_memloc, &Register::B);
         code.append(&mut fetch_store_code);
 
@@ -557,13 +555,11 @@ fn translate_store_var_reference(arg_memloc: u64, is_ref: bool, store_memloc: u6
 
         // if the variable isn't a reference, load the variable's address into register A
 
-        println!("arg = {}", arg_memloc);
         let mut fetch_var_code = translate_load_const(arg_memloc, &Register::A);
         code.append(&mut fetch_var_code);
 
         // load the store memory location into register B
 
-        println!("store = {}", arg_memloc);
         let mut fetch_store_code = translate_load_const(store_memloc, &Register::B);
         code.append(&mut fetch_store_code);
 
@@ -600,9 +596,7 @@ fn translate_proc_call(name: &Pidentifier, args: &Arguments, symbol_table: &Symb
         // check if the type of each argument matches
         // the type of the destination procedure parameter
 
-        println!("proc: {}", name);
         for (arg_no, (arg_name, arg_decl)) in zip(args, &proc_info.args_decl).enumerate() {
-            println!("{}", arg_no);
             if let Some(arg_entry) = symbol_table.get(arg_name) {
 
                 // check type equality
@@ -641,7 +635,6 @@ fn translate_proc_call(name: &Pidentifier, args: &Arguments, symbol_table: &Symb
         let mut store_addr = translate_load_const(proc_info.mem_addr, &Register::B);
         code.append(&mut store_addr);
 
-        println!("{} -> {}", name, curr_line);
         let mut ret_value = translate_load_const((curr_line + 1) as u64, &Register::A);
         code.append(&mut ret_value);
 
@@ -649,7 +642,7 @@ fn translate_proc_call(name: &Pidentifier, args: &Arguments, symbol_table: &Symb
 
         // jump to the address that begins the procedure
 
-        add_command_string(&mut code, "JUMP ".to_owned() + &proc_info.start_addr.to_string());
+        add_command_string(&mut code, "JUMP ".to_owned() + &(proc_info.start_addr).to_string());
         
     } else {
         return Err(TranslationError::NoSuchProcedure);
@@ -790,7 +783,7 @@ fn translate_main(main: &Main, function_table: &FunctionTable, curr_mem_byte: u6
 
 // TODO: check variable initialisation
 pub fn translate(ast: ProgramAll) -> Result<Vec<String>, TranslationError> {
-    let mut procedures_code = Vec::new();
+    let mut code = vec!["JUMP <MAIN ADDRESS>".to_owned()];
 
     let mut function_table = FunctionTable::new();
     let mut curr_mem_byte = 0;
@@ -801,9 +794,9 @@ pub fn translate(ast: ProgramAll) -> Result<Vec<String>, TranslationError> {
 
         // translate the the procedure
 
-        let (mut proc_code, next_mem_byte) = translate_procedure(&procedure, &mut function_table, curr_mem_byte, procedures_code.len())?;
+        let (mut proc_code, next_mem_byte) = translate_procedure(&procedure, &mut function_table, curr_mem_byte, code.len())?;
         add_comment(&mut proc_code, &procedure.proc_head.name);
-        procedures_code.append(&mut proc_code);
+        code.append(&mut proc_code);
 
         // update the location of the next free memory byte
 
@@ -812,12 +805,8 @@ pub fn translate(ast: ProgramAll) -> Result<Vec<String>, TranslationError> {
 
     // jump to main
 
-    let main_jump_code = "JUMP ".to_owned() + &(procedures_code.len() + 1).to_string();
-    let mut code = vec![main_jump_code];
-
-    // append procedures' code
-
-    code.append(&mut procedures_code);
+    let main_jump_code = "JUMP ".to_owned() + &code.len().to_string();
+    code[0] = main_jump_code;
 
     // translate main into code
 

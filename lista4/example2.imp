@@ -15,27 +15,12 @@ IN
   pa(a,b);
 END
 
-PROCEDURE pc(a,b) IS
-IN
-  pb(a,b);
-  pb(a,b);
-  pb(a,b);
-END
-
-PROCEDURE pd(a,b) IS
-IN
-  pc(a,b);
-  pc(a,b);
-  pc(a,b);
-  pc(a,b);
-END
-
 PROGRAM IS
   a,b
 IN
   READ a;
   READ b;
-  pd(a,b);
+  pb(a,b);
   WRITE a;
   WRITE b;
 END
