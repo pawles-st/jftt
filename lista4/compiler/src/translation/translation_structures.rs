@@ -50,7 +50,6 @@ pub enum TranslationError {
     RecurrenceNotAllowed,
     InvalidNumberOfArguments,
     InvalidReturnAddress,
-    Temp,
 }
 
 use std::collections::HashMap;

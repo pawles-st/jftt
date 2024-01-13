@@ -485,7 +485,7 @@ fn divide_code(curr_line: usize) -> Vec<String> {
     // if divisor is 0, stop
 
     add_command(&mut code, "GET d");
-    add_command_string(&mut code, "JZERO ".to_owned() + &(curr_line + 25).to_string());
+    add_command_string(&mut code, "JZERO ".to_owned() + &(curr_line + 26).to_string());
 
     // copy dividend into the remainder register
 
@@ -500,9 +500,9 @@ fn divide_code(curr_line: usize) -> Vec<String> {
     // shift divisor left as long as it's smaller than still-left dividend
 
     add_command(&mut code, "SHL d"); // label: align_divisor
-    add_command(&mut code, "GET e");
-    add_command(&mut code, "SUB d");
-    add_command_string(&mut code, "JPOS ".to_owned() + &(curr_line + 8).to_string());
+    add_command(&mut code, "GET d");
+    add_command(&mut code, "SUB e");
+    add_command_string(&mut code, "JZERO ".to_owned() + &(curr_line + 8).to_string());
     add_command(&mut code, "SHR d");
     //add_command(&mut code, "JUMP {divide}");
 
@@ -844,6 +844,7 @@ fn translate_equal(lhs: &Value, rhs: &Value, symbol_table: &SymbolTable) -> Resu
     add_command(&mut comparison_code, "GET d");
     add_command(&mut comparison_code, "SUB c");
     add_command(&mut comparison_code, "JPOS "); // blank jump
+    code.append(&mut comparison_code);
 
     return Ok(code);
 }
@@ -876,6 +877,7 @@ fn translate_not_equal(lhs: &Value, rhs: &Value, symbol_table: &SymbolTable) -> 
     add_command(&mut comparison_code, "SUB c");
     add_command(&mut comparison_code, "ADD e");
     add_command(&mut comparison_code, "JPOS "); // blank jump
+    code.append(&mut comparison_code);
     
     return Ok(code);
 }

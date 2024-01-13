@@ -1,5 +1,7 @@
 use std::fs;
 use std::io;
+use std::io::Write;
+use std::env;
 
 use lalrpop_util::lalrpop_mod;
 use grammar::ProgramAllParser;
@@ -11,19 +13,26 @@ pub mod translation;
 lalrpop_mod!(pub grammar);
 
 fn main() -> io::Result<()> {
-    let program = fs::read_to_string("../test.imp")?;
+    let args: Vec<String> = env::args().collect();
+    if args.len() < 3 {
+        eprintln!("usage: /path/to/programme <input-file> <output-file>");
+        std::process::exit(1);
+    }
+
+    let program = fs::read_to_string(&args[1])?;
     match ProgramAllParser::new().parse(&program) {
         Ok(ast) => {
             //println!("Parsing succeeded!\nAST: {:?}", ast);
             match translate(ast) {
-                Ok(code) => {code
+                Ok(code) => {
+                    let all_code = code
                     .iter()
-                    .fold(true, |first, command| {
-                        if !first { print!("\n"); }
-                        print!("{}", command);
-                        false
-                    });}
-                    //println!("{:?}", code.join("\n")),
+                    .fold(Vec::new(), |mut all_code, line| {
+                        writeln!(&mut all_code, "{}", line).unwrap();
+                        all_code
+                    });
+                    fs::write(&args[2], all_code)?;
+                }
                 Err(e) => eprintln!("Error: {:?}", e),
             }
         },
