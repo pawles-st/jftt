@@ -389,6 +389,52 @@ fn translate_sub_expr(lhs: &Value, rhs: &Value, register: &Register, symbol_tabl
     return Ok(code);
 }
 
+fn multiply_code(curr_line: usize) -> Vec<String> {
+    let mut code = Vec::new();
+    
+    // register B will hold the result
+    // reset the result register
+
+    add_command(&mut code, "RST b");
+
+    // fetch the still-left rhs
+    // if it's equal to zero, stop
+
+    add_command(&mut code, "GET d"); // label: mul_loop_line
+    let end_loop_line = (curr_line + 13).to_string();
+    add_command_string(&mut code, "JZERO ".to_owned() + &end_loop_line);
+
+    // see if lsb of still-left rhs is 1...
+
+    add_command(&mut code, "SHR d");
+    add_command(&mut code, "SHL d");
+    add_command(&mut code, "SUB d");
+
+    // ...if not, don't add anything
+
+    let after_add_line = (curr_line + 10).to_string();
+    add_command_string(&mut code, "JZERO ".to_owned() + &after_add_line);
+
+    // ...if it is a 1, add the current lhs shift to the result
+
+    add_command(&mut code, "GET b");
+    add_command(&mut code, "ADD c");
+    add_command(&mut code, "PUT b");
+
+    // shift the lhs to the left, rhs to the right
+
+    add_command(&mut code, "SHL c"); // label: after_add_line
+    add_command(&mut code, "SHR d");
+
+    // repeat until rhs is 0
+
+    let mul_loop_line = (curr_line + 1).to_string();
+    add_command_string(&mut code, "JUMP ".to_owned() + &mul_loop_line);
+    // label: end_loop_line
+
+    return code
+}
+
 // perform the mul Expression for lhs and rhs Values and store the result in the register of choice
 // TODO: move end check just before final two shifts?
 // TODO: optimise multiplication by a constant
@@ -396,10 +442,12 @@ fn translate_sub_expr(lhs: &Value, rhs: &Value, register: &Register, symbol_tabl
 fn translate_mul_expr(lhs: &Value, rhs: &Value, register: &Register, symbol_table: &SymbolTable, mut curr_line: usize) -> Result<Vec<String>, TranslationError> {
     let mut code = Vec::new();
 
-    // load the lhs value into register C, and rhs value into register D
+    // load the lhs value into register C...
 
     let mut lhs_code = translate_val(lhs, &Register::C, symbol_table)?;
     code.append(&mut lhs_code);
+
+    // ...and rhs value into register D
 
     let mut rhs_code = translate_val(rhs, &Register::D, symbol_table)?;
     code.append(&mut rhs_code);
@@ -411,28 +459,7 @@ fn translate_mul_expr(lhs: &Value, rhs: &Value, register: &Register, symbol_tabl
 
     // then multiply them and move the result into the register of choice
 
-    let mut multiplication_code = Vec::new();
-
-    // register B will hold the result, so reset it
-
-    add_command(&mut multiplication_code, "RST b");
-    add_command(&mut multiplication_code, "GET d"); // mul_loop_line
-    let end_loop_line = (curr_line + 13).to_string();
-    add_command_string(&mut multiplication_code, "JZERO ".to_owned() + &end_loop_line);
-    add_command(&mut multiplication_code, "SHR d");
-    add_command(&mut multiplication_code, "SHL d");
-    add_command(&mut multiplication_code, "SUB d");
-    let after_add_line = (curr_line + 10).to_string();
-    add_command_string(&mut multiplication_code, "JZERO ".to_owned() + &after_add_line);
-    add_command(&mut multiplication_code, "GET b");
-    add_command(&mut multiplication_code, "ADD c");
-    add_command(&mut multiplication_code, "PUT b");
-    add_command(&mut multiplication_code, "SHL c"); // after_add_line
-    add_command(&mut multiplication_code, "SHR d");
-    let mul_loop_line = (curr_line + 1).to_string();
-    add_command_string(&mut multiplication_code, "JUMP ".to_owned() + &mul_loop_line);
-    // end_loop_line
-
+    let mut multiplication_code = multiply_code(curr_line);
     code.append(&mut multiplication_code);
 
     // if the result is to be stored in a register other than B, move it
@@ -446,14 +473,143 @@ fn translate_mul_expr(lhs: &Value, rhs: &Value, register: &Register, symbol_tabl
     return Ok(code);
 }
 
-// TODO: implement
-fn translate_div_expr(lhs: &Value, rhs: &Value, register: &Register, symbol_table: &SymbolTable, curr_line: usize) -> Result<Vec<String>, TranslationError> {
-    return Err(TranslationError::Temp);
+fn divide_code(curr_line: usize) -> Vec<String> {
+    let mut code = Vec::new();
+
+    // register B will hold the quotient, register E the remainder
+    // reset the quotient and remainder register
+
+    add_command(&mut code, "RST b");
+    add_command(&mut code, "RST e");
+
+    // if divisor is 0, stop
+
+    add_command(&mut code, "GET d");
+    add_command_string(&mut code, "JZERO ".to_owned() + &(curr_line + 25).to_string());
+
+    // copy dividend into the remainder register
+
+    add_command(&mut code, "GET c");
+    add_command(&mut code, "PUT e");
+
+    // copy original value of divisor into register C (dividend is no longer needed)
+
+    add_command(&mut code, "GET d");
+    add_command(&mut code, "PUT c");
+
+    // shift divisor left as long as it's smaller than still-left dividend
+
+    add_command(&mut code, "SHL d"); // label: align_divisor
+    add_command(&mut code, "GET e");
+    add_command(&mut code, "SUB d");
+    add_command_string(&mut code, "JPOS ".to_owned() + &(curr_line + 8).to_string());
+    add_command(&mut code, "SHR d");
+    //add_command(&mut code, "JUMP {divide}");
+
+    // perform iterative divison by subtraction of decreasing multiples of divisor
+    // finish when the value in register D reaches the original value of the divisor
+
+    // shift the quotient to the left
+
+    add_command(&mut code, "SHL b"); // label: divide
+
+    // check if dividend >= divisor...
+
+    add_command(&mut code, "GET d");
+    add_command(&mut code, "SUB e");
+
+    // ...if not, jump to next iteration
+
+    add_command_string(&mut code, "JPOS ".to_owned() + &(curr_line + 21).to_string());
+
+    // ...otherwise, subtract from the still-left dividend and increment the quotient by one
+
+    add_command(&mut code, "GET e");
+    add_command(&mut code, "SUB d");
+    add_command(&mut code, "PUT e");
+    add_command(&mut code, "INC b");
+
+    // shift the divisor to the right and check if the new value is smaller than the original
+    // (divided by all multplies of the divisor)
+    // if so, stop division; otherwise, loop and continue
+
+    add_command(&mut code, "SHR d"); // check_end
+    add_command(&mut code, "GET c");
+    add_command(&mut code, "SUB d");
+    add_command_string(&mut code, "JPOS ".to_owned() + &(curr_line + 26).to_string());
+    add_command_string(&mut code, "JUMP ".to_owned() + &(curr_line + 13).to_string());
+    // label: finish
+    
+    return code;
+}
+
+fn translate_div_expr(lhs: &Value, rhs: &Value, register: &Register, symbol_table: &SymbolTable, mut curr_line: usize) -> Result<Vec<String>, TranslationError> {
+    let mut code = Vec::new();
+    
+    // load the lhs value (dividend) into register C...
+
+    let mut lhs_code = translate_val(lhs, &Register::C, symbol_table)?;
+    code.append(&mut lhs_code);
+
+    // ...and rhs value (divisor) into register D
+
+    let mut rhs_code = translate_val(rhs, &Register::D, symbol_table)?;
+    code.append(&mut rhs_code);
+
+    let comment = format!("{:?}", lhs) + " / " + &format!("{:?}", rhs);
+    add_comment(&mut code, &comment);
+
+    curr_line += code.len();
+    
+    // then divide them and move the result into the register of choice
+
+    let mut division_code = divide_code(curr_line);
+    code.append(&mut division_code);
+
+    // if the result is to be stored in a register other than B, move it
+
+    if !matches!(register, Register::B) {
+        add_command(&mut code, "GET b");
+        let move_code = "PUT ".to_owned() + register_to_string(register);
+        add_command_string(&mut code, move_code);
+    }
+
+    return Ok(code);
 }
 
 // TODO: implement
-fn translate_mod_expr(lhs: &Value, rhs: &Value, register: &Register, symbol_table: &SymbolTable, curr_line: usize) -> Result<Vec<String>, TranslationError> {
-    return Err(TranslationError::Temp);
+fn translate_mod_expr(lhs: &Value, rhs: &Value, register: &Register, symbol_table: &SymbolTable, mut curr_line: usize) -> Result<Vec<String>, TranslationError> {
+    let mut code = Vec::new();
+    
+    // load the lhs value (dividend) into register C...
+
+    let mut lhs_code = translate_val(lhs, &Register::C, symbol_table)?;
+    code.append(&mut lhs_code);
+
+    // ...and rhs value (divisor) into register D
+
+    let mut rhs_code = translate_val(rhs, &Register::D, symbol_table)?;
+    code.append(&mut rhs_code);
+
+    let comment = format!("{:?}", lhs) + " % " + &format!("{:?}", rhs);
+    add_comment(&mut code, &comment);
+
+    curr_line += code.len();
+    
+    // then divide them and move the result into the register of choice
+
+    let mut division_code = divide_code(curr_line);
+    code.append(&mut division_code);
+
+    // if the result is to be stored in a register other than E, move it
+
+    if !matches!(register, Register::E) {
+        add_command(&mut code, "GET e");
+        let move_code = "PUT ".to_owned() + register_to_string(register);
+        add_command_string(&mut code, move_code);
+    }
+
+    return Ok(code);
 }
 
 // calculate the value of the specified Expression and store the result in the register of choice
@@ -579,7 +735,7 @@ fn translate_store_var_reference(arg_memloc: u64, is_ref: bool, store_memloc: u6
 }
 
 // call a procedure with given arguments
-fn translate_proc_call(name: &Pidentifier, args: &Arguments, symbol_table: &SymbolTable, function_table: &FunctionTable, curr_line: usize, curr_proc: Option<&Pidentifier>) -> Result<Vec<String>, TranslationError> {
+fn translate_proc_call(name: &Pidentifier, args: &Arguments, symbol_table: &SymbolTable, function_table: &FunctionTable, curr_proc: Option<&Pidentifier>) -> Result<Vec<String>, TranslationError> {
     let mut code = Vec::new();
 
     // check for a recursive call
@@ -1096,7 +1252,7 @@ fn translate_commands(commands: &Commands, symbol_table: &SymbolTable, function_
                 code.append(&mut command_code);
             }
             Command::ProcedureCall(proc_call) => {
-                let mut command_code = translate_proc_call(&proc_call.name, &proc_call.args, symbol_table, function_table, curr_line + code.len(), curr_proc)?;
+                let mut command_code = translate_proc_call(&proc_call.name, &proc_call.args, symbol_table, function_table, curr_proc)?;
                 let comment = "--- ".to_owned() + &format!("{:?}", command) + " ---";
                 add_comment(&mut command_code, &comment);
                 code.append(&mut command_code);
@@ -1113,7 +1269,6 @@ fn translate_commands(commands: &Commands, symbol_table: &SymbolTable, function_
                 add_comment(&mut command_code, &comment);
                 code.append(&mut command_code);
             }
-            _ => return Err(TranslationError::Temp)
         }
     }
     return Ok(code);
