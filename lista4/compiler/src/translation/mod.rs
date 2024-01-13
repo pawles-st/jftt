@@ -963,7 +963,7 @@ fn translate_while(condition: &Condition, commands: &Commands, symbol_table: &Sy
     
     // jump to the beginning of the loop at the end of commands block
 
-    add_command_string(&mut code, "JUMP ".to_owned() + &(curr_line.to_string()));
+    add_command_string(&mut commands_code, "JUMP ".to_owned() + &(curr_line.to_string()));
 
     // fill the blank jumps in condition code
 
