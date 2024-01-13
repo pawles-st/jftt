@@ -881,7 +881,7 @@ fn translate_if(condition: &Condition, commands: &Commands, symbol_table: &Symbo
 
     // translate the if commands
 
-    let mut commands_code = translate_commands(commands, symbol_table, function_table, curr_line, curr_proc)?;
+    let mut commands_code = translate_commands(commands, symbol_table, function_table, curr_line + condition_code.len(), curr_proc)?;
 
     // fill the blank jumps in condition code
 
@@ -915,11 +915,11 @@ fn translate_if_else(condition: &Condition, if_commands: &Commands, else_command
 
     // translate the if commands
 
-    let mut if_commands_code = translate_commands(if_commands, symbol_table, function_table, curr_line, curr_proc)?;
+    let mut if_commands_code = translate_commands(if_commands, symbol_table, function_table, curr_line + condition_code.len(), curr_proc)?;
 
     // translate the else commands
 
-    let mut else_commands_code = translate_commands(else_commands, symbol_table, function_table, curr_line, curr_proc)?;
+    let mut else_commands_code = translate_commands(else_commands, symbol_table, function_table, curr_line + condition_code.len() + if_commands_code.len() + 1, curr_proc)?;
 
     // jump at the end of the if_commands block
 
@@ -959,7 +959,7 @@ fn translate_while(condition: &Condition, commands: &Commands, symbol_table: &Sy
 
     // translate the loop commands
 
-    let mut commands_code = translate_commands(commands, symbol_table, function_table, curr_line, curr_proc)?;
+    let mut commands_code = translate_commands(commands, symbol_table, function_table, curr_line + condition_code.len(), curr_proc)?;
     
     // jump to the beginning of the loop at the end of commands block
 
@@ -997,7 +997,7 @@ fn translate_repeat(commands: &Commands, condition: &Condition, symbol_table: &S
 
     // translate the loop commands
 
-    let mut commands_code = translate_commands(commands, symbol_table, function_table, curr_line, curr_proc)?;
+    let mut commands_code = translate_commands(commands, symbol_table, function_table, curr_line + condition_code.len(), curr_proc)?;
 
     // fill the blank jumps in condition code
 
