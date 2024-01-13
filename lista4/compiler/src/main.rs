@@ -11,7 +11,7 @@ pub mod translation;
 lalrpop_mod!(pub grammar);
 
 fn main() -> io::Result<()> {
-    let program = fs::read_to_string("../example2.imp")?;
+    let program = fs::read_to_string("../example6.imp")?;
     match ProgramAllParser::new().parse(&program) {
         Ok(ast) => {
             //println!("Parsing succeeded!\nAST: {:?}", ast);

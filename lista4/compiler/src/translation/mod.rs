@@ -173,7 +173,7 @@ fn translate_fetch_arrnum(arrname: &Pidentifier, idx: Num, register: &Register, 
                 let mut ref_address_code = translate_load_const(arr.memloc, &Register::B);
                 code.append(&mut ref_address_code);
 
-                let comment = arrname.to_owned() + "IS array ref; indirectly fetching address into register " + register_to_string(register);
+                let comment = arrname.to_owned() + " IS array ref; indirectly fetching address into register " + register_to_string(register);
                 add_comment(&mut code, &comment);
 
                 // next, load the value stored under the reference's address
@@ -200,7 +200,7 @@ fn translate_fetch_arrnum(arrname: &Pidentifier, idx: Num, register: &Register, 
                 let mut arrnum_address_code = translate_load_const(arr.memloc + idx, register);
                 code.append(&mut arrnum_address_code);
 
-                let comment = arrname.to_owned() + "is NOT array ref; directly fetching address into register " + register_to_string(register);
+                let comment = arrname.to_owned() + " is NOT array ref; directly fetching address into register " + register_to_string(register);
                 add_comment(&mut code, &comment);
             }
         } else {
