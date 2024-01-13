@@ -1,6 +1,0 @@
-PROGRAM IS
-	x
-IN
-	x := 111111111;
-	WRITE x;
-END

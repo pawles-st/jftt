@@ -1,6 +1,7 @@
 *.zip
 *.pdf
+*.imp
 */*/target/*
-*/*.out
-*/*.c
-*/*.txt
+*.out
+*.c
+*.txt
