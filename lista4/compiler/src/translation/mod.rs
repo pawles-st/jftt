@@ -6,7 +6,7 @@ mod translation_structures;
 mod tests;
 
 // create an entry in the function table for the proc_head
-fn malloc_proc(proc_head: &ProcHead, function_table: &mut FunctionTable, start_addr: usize, curr_mem_byte: u64) -> Result<(), TranslationError> {
+fn malloc_proc(proc_head: &ProcHead, function_table: &mut FunctionTable, code_line_number: usize, mem_addr: u64) -> Result<(), TranslationError> {
     let proc_name = proc_head.name.to_owned();
 
     // check if the procedure name is unique...
@@ -17,7 +17,7 @@ fn malloc_proc(proc_head: &ProcHead, function_table: &mut FunctionTable, start_a
 
     // ...if so, add the proc_name and args_decl to the function_table
 
-    function_table.insert(proc_name, ProcedureInfo::new(proc_head.args_decl.clone(), start_addr, curr_mem_byte));
+    function_table.insert(proc_name, ProcedureInfo::new(proc_head.args_decl.clone(), code_line_number, mem_addr));
 
     Ok(())
 }
@@ -322,7 +322,7 @@ fn translate_val(value: &Value, register: &Register, symbol_table: &SymbolTable)
 }
 
 // return from the procedure to the caller
-fn translate_return(symbol_table: &SymbolTable) -> Result<Vec<String>, TranslationError> {
+fn translate_return(symbol_table: &SymbolTable) -> Vec<String> {
     let mut code = Vec::new();
 
     // assert the return location object has been stored in the symbol table...
@@ -333,7 +333,7 @@ fn translate_return(symbol_table: &SymbolTable) -> Result<Vec<String>, Translati
 
         if let SymbolTableEntry::Ret(return_location) = ret {
 
-            // if so, load the value stored under the return address...
+            // if so, load the return address...
 
             let mut ret_addr_code = translate_load_const(return_location.memloc, &Register::B);
             code.append(&mut ret_addr_code);
@@ -349,9 +349,9 @@ fn translate_return(symbol_table: &SymbolTable) -> Result<Vec<String>, Translati
             panic!("Expected return address object in the symbol table, found {:?}", ret);
         }
     } else {
-        return Err(TranslationError::NoReturnAddress);
+        panic!("Expected a return address object in the symbol table, but none was found");
     }
-    return Ok(code);
+    return code;
 }
 
 // perform an add Expression for lhs and rhs Values and store the result in the register of choice
@@ -618,7 +618,6 @@ fn translate_proc_call(name: &Pidentifier, args: &Arguments, symbol_table: &Symb
 
                         let mut store_addr_code = translate_store_var_reference(arg.memloc, arg.is_ref, proc_info.mem_addr + 1 + arg_no as u64);
                         code.append(&mut store_addr_code);
-
                     } else {
                         return Err(TranslationError::ArrayExpected);
                     }
@@ -630,19 +629,23 @@ fn translate_proc_call(name: &Pidentifier, args: &Arguments, symbol_table: &Symb
             }
         }
 
-        // store the return address
+        // load the return's storage address...
 
         let mut store_addr = translate_load_const(proc_info.mem_addr, &Register::B);
         code.append(&mut store_addr);
 
-        let mut ret_value = translate_load_const((curr_line + 1) as u64, &Register::A);
-        code.append(&mut ret_value);
+        // ...and store the return address there
 
+        let mut return_addr_offset = translate_load_const(4, &Register::C);
+        code.append(&mut return_addr_offset);
+
+        add_command(&mut code, "STRK a");
+        add_command(&mut code, "ADD c");
         add_command(&mut code, "STORE b");
 
         // jump to the address that begins the procedure
 
-        add_command_string(&mut code, "JUMP ".to_owned() + &(proc_info.start_addr).to_string());
+        add_command_string(&mut code, "JUMP ".to_owned() + &(proc_info.code_line_number).to_string());
         
     } else {
         return Err(TranslationError::NoSuchProcedure);
@@ -745,7 +748,7 @@ fn translate_procedure(procedure: &Procedure, function_table: &mut FunctionTable
 
     let curr_mem_byte = malloc_args(curr_mem_byte, &procedure.proc_head.args_decl, &mut symbol_table)?;
     let next_mem_byte = malloc(curr_mem_byte, &procedure.declarations, &mut symbol_table)?;
-    println!("{} Symbol table: {:?}", &procedure.proc_head.name, symbol_table);
+    //println!("{} Symbol table: {:?}", &procedure.proc_head.name, symbol_table);
 
     // translate the procedure commands
 
@@ -754,7 +757,7 @@ fn translate_procedure(procedure: &Procedure, function_table: &mut FunctionTable
 
     // attach return code
 
-    let mut ret_code = translate_return(&symbol_table)?;
+    let mut ret_code = translate_return(&symbol_table);
     code.append(&mut ret_code);
 
     return Ok((code, next_mem_byte));
@@ -770,7 +773,7 @@ fn translate_main(main: &Main, function_table: &FunctionTable, curr_mem_byte: u6
     // allocate memory for the declarations
     
     let _next_mem_byte = malloc(curr_mem_byte, &main.declarations, &mut symbol_table)?;
-    println!("Main Symbol table: {:?}", symbol_table);
+    //println!("Main Symbol table: {:?}", symbol_table);
 
     // translate the Main commands
 

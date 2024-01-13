@@ -9,7 +9,7 @@ pub fn add_command_string(code: &mut Vec<String>, command: String) {
 }
 
 pub fn add_comment(code: &mut Vec<String>, comment: &str) {
-    code[0] +=  " # ";
+    code[0] += " # ";
     code[0] += comment;
 }
 
@@ -49,7 +49,6 @@ pub enum TranslationError {
     VariableExpected,
     RecurrenceNotAllowed,
     InvalidNumberOfArguments,
-    NoReturnAddress,
     InvalidReturnAddress,
     Temp,
 }
@@ -103,13 +102,13 @@ pub type SymbolTable = HashMap<String, SymbolTableEntry>;
 
 pub struct ProcedureInfo {
     pub args_decl: ArgumentDeclarations,
-    pub start_addr: usize,
+    pub code_line_number: usize,
     pub mem_addr: u64,
 }
 
 impl ProcedureInfo {
-    pub fn new(ad: ArgumentDeclarations, sa: usize, ma: u64) -> Self {
-        return Self{args_decl: ad, start_addr: sa, mem_addr: ma};
+    pub fn new(ad: ArgumentDeclarations, cln: usize, ma: u64) -> Self {
+        return Self{args_decl: ad, code_line_number: cln, mem_addr: ma};
     }
 }
 
