@@ -231,7 +231,7 @@ fn translate_fetch_arrpid(arrname: &Pidentifier, idx_varname: &Pidentifier, regi
 
     add_command(&mut code, "LOAD b");
 
-    // ...and temporarily move to register E
+    // ...and temporarily move it to register E
 
     add_command(&mut code, "PUT e");
 
@@ -263,7 +263,7 @@ fn translate_fetch_arrpid(arrname: &Pidentifier, idx_varname: &Pidentifier, regi
 }
 
 // fetch the address of the specified Identifier into the register of choice
-// NOTICE: erases the contents of registers A and B
+// NOTICE: erases the contents of registers A, B and E
 fn translate_fetch(id: &Identifier, register: &Register, symbol_table: &SymbolTable) -> Result<Vec<String>, TranslationError> {
 
     // execute the appropriate fetch code based on the Identifier type
@@ -279,7 +279,7 @@ fn translate_fetch(id: &Identifier, register: &Register, symbol_table: &SymbolTa
 }
 
 // fetch the specified Value into the register of choice
-// NOTICE: erases the contents of registers A and B
+// NOTICE: erases the contents of registers A, B and E
 fn translate_val(value: &Value, register: &Register, symbol_table: &SymbolTable) -> Result<Vec<String>, TranslationError> {
     match value {
         Value::Number(num) => {
@@ -321,41 +321,8 @@ fn translate_val(value: &Value, register: &Register, symbol_table: &SymbolTable)
     }
 }
 
-// return from the procedure to the caller
-fn translate_return(symbol_table: &SymbolTable) -> Vec<String> {
-    let mut code = Vec::new();
-
-    // assert the return location object has been stored in the symbol table...
-
-    if let Some(ret) = symbol_table.get(".return") {
-
-        // ...and that it is of a correct type
-
-        if let SymbolTableEntry::Ret(return_location) = ret {
-
-            // if so, load the return address...
-
-            let mut ret_addr_code = translate_load_const(return_location.memloc, &Register::B);
-            code.append(&mut ret_addr_code);
-            add_command(&mut code, "LOAD b");
-
-            let comment = "return to the caller";
-            add_comment(&mut code, comment);
-
-            // ...and jump to the line number equal to this value
-
-            add_command(&mut code, "JUMPR a");
-        } else {
-            panic!("Expected return address object in the symbol table, found {:?}", ret);
-        }
-    } else {
-        panic!("Expected a return address object in the symbol table, but none was found");
-    }
-    return code;
-}
-
 // perform an add Expression for lhs and rhs Values and store the result in the register of choice
-// NOTICE: erases the contents of registers A, B, C, and D
+// NOTICE: erases the contents of registers A, B, C, D and E
 fn translate_add_expr(lhs: &Value, rhs: &Value, register: &Register, symbol_table: &SymbolTable) -> Result<Vec<String>, TranslationError> {
     let mut code = Vec::new();
     
@@ -363,14 +330,14 @@ fn translate_add_expr(lhs: &Value, rhs: &Value, register: &Register, symbol_tabl
 
     let mut lhs_code = translate_val(lhs, &Register::C, symbol_table)?;
     code.append(&mut lhs_code);
-    
-    let comment = format!("{:?}", lhs) + " + " + &format!("{:?}", rhs);
-    add_comment(&mut code, &comment);
 
     // ...and the rhs value into register D
 
     let mut rhs_code = translate_val(rhs, &Register::D, symbol_table)?;
     code.append(&mut rhs_code);
+    
+    let comment = format!("{:?}", lhs) + " + " + &format!("{:?}", rhs);
+    add_comment(&mut code, &comment);
 
     // then add them and move the result into the register of choice
 
@@ -389,7 +356,7 @@ fn translate_add_expr(lhs: &Value, rhs: &Value, register: &Register, symbol_tabl
 }
 
 // perform the sub Expression for lhs and rhs Values and store the result in the register of choice
-// NOTICE: erases the contents of registers A, B, C and D
+// NOTICE: erases the contents of registers A, B, C, D and E
 fn translate_sub_expr(lhs: &Value, rhs: &Value, register: &Register, symbol_table: &SymbolTable) -> Result<Vec<String>, TranslationError> {
     let mut code = Vec::new();
     
@@ -398,13 +365,13 @@ fn translate_sub_expr(lhs: &Value, rhs: &Value, register: &Register, symbol_tabl
     let mut lhs_code = translate_val(lhs, &Register::C, symbol_table)?;
     code.append(&mut lhs_code);
 
-    let comment = format!("{:?}", lhs) + " - " + &format!("{:?}", rhs);
-    add_comment(&mut code, &comment);
-
     // ...and the rhs value into register D
 
     let mut rhs_code = translate_val(rhs, &Register::D, symbol_table)?;
     code.append(&mut rhs_code);
+
+    let comment = format!("{:?}", lhs) + " - " + &format!("{:?}", rhs);
+    add_comment(&mut code, &comment);
 
     // then subtract them and move the result into the register of choice
 
@@ -425,7 +392,7 @@ fn translate_sub_expr(lhs: &Value, rhs: &Value, register: &Register, symbol_tabl
 // perform the mul Expression for lhs and rhs Values and store the result in the register of choice
 // TODO: move end check just before final two shifts?
 // TODO: optimise multiplication by a constant
-// NOTICE: erases the contents of registers A, B, C and D
+// NOTICE: erases the contents of registers A, B, C, D, and E
 fn translate_mul_expr(lhs: &Value, rhs: &Value, register: &Register, symbol_table: &SymbolTable, mut curr_line: usize) -> Result<Vec<String>, TranslationError> {
     let mut code = Vec::new();
 
@@ -436,30 +403,37 @@ fn translate_mul_expr(lhs: &Value, rhs: &Value, register: &Register, symbol_tabl
 
     let mut rhs_code = translate_val(rhs, &Register::D, symbol_table)?;
     code.append(&mut rhs_code);
+
+    let comment = format!("{:?}", lhs) + " * " + &format!("{:?}", rhs);
+    add_comment(&mut code, &comment);
     
     curr_line += code.len();
 
     // then multiply them and move the result into the register of choice
 
+    let mut multiplication_code = Vec::new();
+
     // register B will hold the result, so reset it
 
-    add_command(&mut code, "RST b");
-    add_command(&mut code, "GET d"); // mul_loop_line
+    add_command(&mut multiplication_code, "RST b");
+    add_command(&mut multiplication_code, "GET d"); // mul_loop_line
     let end_loop_line = (curr_line + 13).to_string();
-    add_command_string(&mut code, "JZERO ".to_owned() + &end_loop_line);
-    add_command(&mut code, "SHR d");
-    add_command(&mut code, "SHL d");
-    add_command(&mut code, "SUB d");
+    add_command_string(&mut multiplication_code, "JZERO ".to_owned() + &end_loop_line);
+    add_command(&mut multiplication_code, "SHR d");
+    add_command(&mut multiplication_code, "SHL d");
+    add_command(&mut multiplication_code, "SUB d");
     let after_add_line = (curr_line + 10).to_string();
-    add_command_string(&mut code, "JZERO ".to_owned() + &after_add_line);
-    add_command(&mut code, "GET b");
-    add_command(&mut code, "ADD c");
-    add_command(&mut code, "PUT b");
-    add_command(&mut code, "SHL c"); // after_add_line
-    add_command(&mut code, "SHR d");
+    add_command_string(&mut multiplication_code, "JZERO ".to_owned() + &after_add_line);
+    add_command(&mut multiplication_code, "GET b");
+    add_command(&mut multiplication_code, "ADD c");
+    add_command(&mut multiplication_code, "PUT b");
+    add_command(&mut multiplication_code, "SHL c"); // after_add_line
+    add_command(&mut multiplication_code, "SHR d");
     let mul_loop_line = (curr_line + 1).to_string();
-    add_command_string(&mut code, "JUMP ".to_owned() + &mul_loop_line);
+    add_command_string(&mut multiplication_code, "JUMP ".to_owned() + &mul_loop_line);
     // end_loop_line
+
+    code.append(&mut multiplication_code);
 
     // if the result is to be stored in a register other than B, move it
 
@@ -483,7 +457,7 @@ fn translate_mod_expr(lhs: &Value, rhs: &Value, register: &Register, symbol_tabl
 }
 
 // calculate the value of the specified Expression and store the result in the register of choice
-// NOTICE: erases the contents of registers A, B, C and D
+// NOTICE: erases the contents of registers A, B, C, D and E
 fn translate_expr(expr: &Expression, register: &Register, symbol_table: &SymbolTable, curr_line: usize) -> Result<Vec<String>, TranslationError> {
     match expr {
         Expression::Val(value) =>
@@ -528,6 +502,40 @@ fn translate_assignment(id: &Identifier, expr: &Expression, symbol_table: &Symbo
 
     return Ok(code);
 }
+
+// return from the procedure to the caller
+fn translate_return(symbol_table: &SymbolTable) -> Vec<String> {
+    let mut code = Vec::new();
+
+    // assert the return location object has been stored in the symbol table...
+
+    if let Some(ret) = symbol_table.get(".return") {
+
+        // ...and that it is of a correct type
+
+        if let SymbolTableEntry::Ret(return_location) = ret {
+
+            // if so, load the return address...
+
+            let mut ret_addr_code = translate_load_const(return_location.memloc, &Register::B);
+            code.append(&mut ret_addr_code);
+            add_command(&mut code, "LOAD b");
+
+            let comment = "return to the caller";
+            add_comment(&mut code, comment);
+
+            // ...and jump to the line number equal to this value
+
+            add_command(&mut code, "JUMPR a");
+        } else {
+            panic!("Expected return address object in the symbol table, found {:?}", ret);
+        }
+    } else {
+        panic!("Expected a return address object in the symbol table, but none was found");
+    }
+    return code;
+}
+
 
 fn translate_store_var_reference(arg_memloc: u64, is_ref: bool, store_memloc: u64) -> Vec<String> {
     let mut code = Vec::new();
@@ -653,10 +661,369 @@ fn translate_proc_call(name: &Pidentifier, args: &Arguments, symbol_table: &Symb
     return Ok(code);
 }
 
+fn translate_equal(lhs: &Value, rhs: &Value, symbol_table: &SymbolTable) -> Result<Vec<String>, TranslationError> {
+    let mut code = Vec::new();
+
+    // load the lhs value into register C...
+
+    let mut lhs_code = translate_val(lhs, &Register::C, symbol_table)?;
+    code.append(&mut lhs_code);
+
+    // ...and the rhs value into register D
+
+    let mut rhs_code = translate_val(rhs, &Register::D, symbol_table)?;
+    code.append(&mut rhs_code);
+
+    let comment = "condition".to_owned() + &format!("{:?}", lhs) + " = " + &format!("{:?}", rhs) + "";
+    add_comment(&mut code, &comment);
+
+    // then check for equality of the two values
+    
+    let mut comparison_code = Vec::new();
+    
+    add_command(&mut comparison_code, "GET c");
+    add_command(&mut comparison_code, "SUB d");
+    add_command(&mut comparison_code, "JPOS "); // blank jump
+
+    add_command(&mut comparison_code, "GET d");
+    add_command(&mut comparison_code, "SUB c");
+    add_command(&mut comparison_code, "JPOS "); // blank jump
+
+    return Ok(code);
+}
+
+fn translate_not_equal(lhs: &Value, rhs: &Value, symbol_table: &SymbolTable) -> Result<Vec<String>, TranslationError> {
+    let mut code = Vec::new();
+
+    // load the lhs value into register C...
+
+    let mut lhs_code = translate_val(lhs, &Register::C, symbol_table)?;
+    code.append(&mut lhs_code);
+
+    // ...and the rhs value into register D...
+
+    let mut rhs_code = translate_val(rhs, &Register::D, symbol_table)?;
+    code.append(&mut rhs_code);
+
+    let comment = "condition".to_owned() + &format!("{:?}", lhs) + " != " + &format!("{:?}", rhs) + "";
+    add_comment(&mut code, &comment);
+
+    // then check for difference of the two values
+
+    let mut comparison_code = Vec::new();
+
+    add_command(&mut comparison_code, "GET c");
+    add_command(&mut comparison_code, "SUB d");
+    add_command(&mut comparison_code, "PUT e");
+
+    add_command(&mut comparison_code, "GET d");
+    add_command(&mut comparison_code, "SUB c");
+    add_command(&mut comparison_code, "ADD e");
+    add_command(&mut comparison_code, "JPOS "); // blank jump
+    
+    return Ok(code);
+}
+
+fn translate_greater(lhs: &Value, rhs: &Value, symbol_table: &SymbolTable) -> Result<Vec<String>, TranslationError> {
+    let mut code = Vec::new();
+
+    // load the lhs value into register C...
+
+    let mut lhs_code = translate_val(lhs, &Register::C, symbol_table)?;
+    code.append(&mut lhs_code);
+
+    // ...and the rhs value into register D...
+
+    let mut rhs_code = translate_val(rhs, &Register::D, symbol_table)?;
+    code.append(&mut rhs_code);
+
+    let comment = "condition".to_owned() + &format!("{:?}", lhs) + " > " + &format!("{:?}", rhs) + "";
+    add_comment(&mut code, &comment);
+
+    // then check if lhs > rhs
+    
+    let mut comparison_code = Vec::new();
+
+    add_command(&mut comparison_code, "GET c");
+    add_command(&mut comparison_code, "SUB d");
+    add_command(&mut comparison_code, "JZERO "); // blank jump
+    code.append(&mut comparison_code);
+
+    return Ok(code);
+}
+
+fn translate_lesser(lhs: &Value, rhs: &Value, symbol_table: &SymbolTable) -> Result<Vec<String>, TranslationError> {
+    let mut code = Vec::new();
+
+    // load the lhs value into register C...
+
+    let mut lhs_code = translate_val(lhs, &Register::C, symbol_table)?;
+    code.append(&mut lhs_code);
+
+    // ...and the rhs value into register D...
+
+    let mut rhs_code = translate_val(rhs, &Register::D, symbol_table)?;
+    code.append(&mut rhs_code);
+
+    let comment = "condition".to_owned() + &format!("{:?}", lhs) + " < " + &format!("{:?}", rhs) + "";
+    add_comment(&mut code, &comment);
+
+    // then check if lhs > rhs
+
+    let mut comparison_code = Vec::new();
+
+    add_command(&mut comparison_code, "GET d");
+    add_command(&mut comparison_code, "SUB c");
+    add_command(&mut comparison_code, "JZERO "); // blank jump
+    code.append(&mut comparison_code);
+
+    return Ok(code);
+}
+
+fn translate_greater_or_equal(lhs: &Value, rhs: &Value, symbol_table: &SymbolTable) -> Result<Vec<String>, TranslationError> {
+    let mut code = Vec::new();
+
+    // load the lhs value into register C...
+
+    let mut lhs_code = translate_val(lhs, &Register::C, symbol_table)?;
+    code.append(&mut lhs_code);
+
+    // ...and the rhs value into register D...
+
+    let mut rhs_code = translate_val(rhs, &Register::D, symbol_table)?;
+    code.append(&mut rhs_code);
+
+    let comment = "condition".to_owned() + &format!("{:?}", lhs) + " >= " + &format!("{:?}", rhs) + "";
+    add_comment(&mut code, &comment);
+
+    // then check if lhs > rhs
+
+    let mut comparison_code = Vec::new();
+
+    add_command(&mut comparison_code, "GET d");
+    add_command(&mut comparison_code, "SUB c");
+    add_command(&mut comparison_code, "JPOS "); // blank jump
+    code.append(&mut comparison_code);
+
+    return Ok(code);
+}
+
+fn translate_lesser_or_equal(lhs: &Value, rhs: &Value, symbol_table: &SymbolTable) -> Result<Vec<String>, TranslationError> {
+    let mut code = Vec::new();
+
+    // load the lhs value into register C...
+
+    let mut lhs_code = translate_val(lhs, &Register::C, symbol_table)?;
+    code.append(&mut lhs_code);
+
+    // ...and the rhs value into register D...
+
+    let mut rhs_code = translate_val(rhs, &Register::D, symbol_table)?;
+    code.append(&mut rhs_code);
+
+    let comment = "condition".to_owned() + &format!("{:?}", lhs) + " <= " + &format!("{:?}", rhs) + "";
+    add_comment(&mut code, &comment);
+
+    // then check if lhs > rhs
+    
+    let mut comparison_code = Vec::new();
+
+    add_command(&mut comparison_code, "GET c");
+    add_command(&mut comparison_code, "SUB d");
+    add_command(&mut comparison_code, "JPOS "); // blank jump
+    code.append(&mut comparison_code);
+
+    return Ok(code);
+}
+
+fn translate_condition(condition: &Condition, symbol_table: &SymbolTable) -> Result<Vec<String>, TranslationError> {
+    let mut code = Vec::new();
+
+    match condition {
+
+        // translate the corresponding condition
+
+        Condition::Equal(lhs, rhs) => {
+            let mut condition_code = translate_equal(lhs, rhs, symbol_table)?;
+            code.append(&mut condition_code);
+        },
+        Condition::NotEqual(lhs, rhs) => {
+            let mut condition_code = translate_not_equal(lhs, rhs, symbol_table)?;
+            code.append(&mut condition_code);
+        },
+        Condition::Greater(lhs, rhs) => {
+            let mut condition_code = translate_greater(lhs, rhs, symbol_table)?;
+            code.append(&mut condition_code);
+        },
+        Condition::Lesser(lhs, rhs) => {
+            let mut condition_code = translate_lesser(lhs, rhs, symbol_table)?;
+            code.append(&mut condition_code);
+        },
+        Condition::GreaterOrEqual(lhs, rhs) => {
+            let mut condition_code = translate_greater_or_equal(lhs, rhs, symbol_table)?;
+            code.append(&mut condition_code);
+        },
+        Condition::LesserOrEqual(lhs, rhs) => {
+            let mut condition_code = translate_lesser_or_equal(lhs, rhs, symbol_table)?;
+            code.append(&mut condition_code);
+        },
+    }
+
+    return Ok(code);
+}
+
+fn translate_if(condition: &Condition, commands: &Commands, symbol_table: &SymbolTable, function_table: &FunctionTable, curr_line: usize, curr_proc: Option<&Pidentifier>) -> Result<Vec<String>, TranslationError> {
+    let mut code = Vec::new();
+
+    // translate the condition code
+
+    let mut condition_code = translate_condition(condition, symbol_table)?;
+
+    // translate the if commands
+
+    let mut commands_code = translate_commands(commands, symbol_table, function_table, curr_line, curr_proc)?;
+
+    // fill the blank jumps in condition code
+
+    let end_jump_line = curr_line + condition_code.len() + commands_code.len();
+
+    if matches!(condition, Condition::Equal{..}) {
+
+        // equality condition requires filling an extra jump
+
+        let blank_jump_idx = condition_code.len() - 4;
+        condition_code[blank_jump_idx] += &(end_jump_line.to_string());
+    }
+
+    let blank_jump_idx = condition_code.len() - 1;
+    condition_code[blank_jump_idx] += &(end_jump_line.to_string());
+
+    // join the partial codes
+
+    code.append(&mut condition_code);
+    code.append(&mut commands_code);
+
+    return Ok(code);
+}
+
+fn translate_if_else(condition: &Condition, if_commands: &Commands, else_commands: &Commands, symbol_table: &SymbolTable, function_table: &FunctionTable, curr_line: usize, curr_proc: Option<&Pidentifier>) -> Result<Vec<String>, TranslationError> {
+    let mut code = Vec::new();
+
+    // translate the condition code
+
+    let mut condition_code = translate_condition(condition, symbol_table)?;
+
+    // translate the if commands
+
+    let mut if_commands_code = translate_commands(if_commands, symbol_table, function_table, curr_line, curr_proc)?;
+
+    // translate the else commands
+
+    let mut else_commands_code = translate_commands(else_commands, symbol_table, function_table, curr_line, curr_proc)?;
+
+    // jump at the end of the if_commands block
+
+    let end_jump_line = curr_line + condition_code.len() + if_commands_code.len() + else_commands_code.len() + 1;
+    add_command_string(&mut if_commands_code, "JUMP ".to_owned() + &(end_jump_line.to_string()));
+
+    // fill the blank jumps in condition code
+
+    let else_jump_line = curr_line + condition_code.len() + if_commands_code.len();
+
+    if matches!(condition, Condition::Equal{..}) {
+
+        // equality condition requires filling an extra jump
+
+        let blank_jump_idx = condition_code.len() - 4;
+        condition_code[blank_jump_idx] += &(else_jump_line.to_string());
+    }
+
+    let blank_jump_idx = condition_code.len() - 1;
+    condition_code[blank_jump_idx] += &(else_jump_line.to_string());
+
+    // join the partial codes
+
+    code.append(&mut condition_code);
+    code.append(&mut if_commands_code);
+    code.append(&mut else_commands_code);
+
+    return Ok(code);
+}
+
+fn translate_while(condition: &Condition, commands: &Commands, symbol_table: &SymbolTable, function_table: &FunctionTable, curr_line: usize, curr_proc: Option<&Pidentifier>) -> Result<Vec<String>, TranslationError> {
+    let mut code = Vec::new();
+
+    // translate the condition code
+
+    let mut condition_code = translate_condition(condition, symbol_table)?;
+
+    // translate the loop commands
+
+    let mut commands_code = translate_commands(commands, symbol_table, function_table, curr_line, curr_proc)?;
+    
+    // jump to the beginning of the loop at the end of commands block
+
+    add_command_string(&mut code, "JUMP ".to_owned() + &(curr_line.to_string()));
+
+    // fill the blank jumps in condition code
+
+    let end_jump_line = curr_line + condition_code.len() + commands_code.len();
+
+    if matches!(condition, Condition::Equal{..}) {
+
+        // equality condition requires filling an extra jump
+
+        let blank_jump_idx = condition_code.len() - 4;
+        condition_code[blank_jump_idx] += &(end_jump_line.to_string());
+    }
+
+    let blank_jump_idx = condition_code.len() - 1;
+    condition_code[blank_jump_idx] += &(end_jump_line.to_string());
+
+    // join the partial codes
+
+    code.append(&mut condition_code);
+    code.append(&mut commands_code);
+
+    return Ok(code);
+}
+
+fn translate_repeat(commands: &Commands, condition: &Condition, symbol_table: &SymbolTable, function_table: &FunctionTable, curr_line: usize, curr_proc: Option<&Pidentifier>) -> Result<Vec<String>, TranslationError> {
+    let mut code = Vec::new();
+
+    // translate the condition code
+
+    let mut condition_code = translate_condition(condition, symbol_table)?;
+
+    // translate the loop commands
+
+    let mut commands_code = translate_commands(commands, symbol_table, function_table, curr_line, curr_proc)?;
+
+    // fill the blank jumps in condition code
+
+    if matches!(condition, Condition::Equal{..}) {
+
+        // equality condition requires filling an extra jump
+
+        let blank_jump_idx = condition_code.len() - 4;
+        condition_code[blank_jump_idx] += &(curr_line.to_string());
+    }
+
+    let blank_jump_idx = condition_code.len() - 1;
+    condition_code[blank_jump_idx] += &(curr_line.to_string());
+
+    // join the partial codes
+
+    code.append(&mut commands_code);
+    code.append(&mut condition_code);
+
+    return Ok(code);
+}
+
 // read user-inputted value and store it at the address of the Identifier
 fn translate_read(id: &Identifier, symbol_table: &SymbolTable) -> Result<Vec<String>, TranslationError> {
     let mut code = Vec::new();
-    
+
     // fetch the address of the Identifier in register B
 
     let mut id_fetch_code = translate_fetch(id, &Register::B, symbol_table)?;
@@ -704,6 +1071,30 @@ fn translate_commands(commands: &Commands, symbol_table: &SymbolTable, function_
                 add_comment(&mut command_code, &comment);
                 code.append(&mut command_code);
             },
+            Command::If(condition, commands) => {
+                let mut command_code = translate_if(condition, commands, symbol_table, function_table, curr_line + code.len(), curr_proc)?;
+                let comment = "--- ".to_owned() + &format!("{:?}", command) + " ---";
+                add_comment(&mut command_code, &comment);
+                code.append(&mut command_code);
+            }
+            Command::IfElse(condition, if_commands, else_commands) => {
+                let mut command_code = translate_if_else(condition, if_commands, else_commands, symbol_table, function_table, curr_line + code.len(), curr_proc)?;
+                let comment = "--- ".to_owned() + &format!("{:?}", command) + " ---";
+                add_comment(&mut command_code, &comment);
+                code.append(&mut command_code);
+            }
+            Command::While(condition, commands) => {
+                let mut command_code = translate_while(condition, commands, symbol_table, function_table, curr_line + code.len(), curr_proc)?;
+                let comment = "--- ".to_owned() + &format!("{:?}", command) + " ---";
+                add_comment(&mut command_code, &comment);
+                code.append(&mut command_code);
+            }
+            Command::Repeat(commands, condition) => {
+                let mut command_code = translate_repeat(commands, condition, symbol_table, function_table, curr_line + code.len(), curr_proc)?;
+                let comment = "--- ".to_owned() + &format!("{:?}", command) + " ---";
+                add_comment(&mut command_code, &comment);
+                code.append(&mut command_code);
+            }
             Command::ProcedureCall(proc_call) => {
                 let mut command_code = translate_proc_call(&proc_call.name, &proc_call.args, symbol_table, function_table, curr_line + code.len(), curr_proc)?;
                 let comment = "--- ".to_owned() + &format!("{:?}", command) + " ---";
