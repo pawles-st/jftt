@@ -876,7 +876,7 @@ fn translate_not_equal(lhs: &Value, rhs: &Value, symbol_table: &SymbolTable) -> 
     add_command(&mut comparison_code, "GET d");
     add_command(&mut comparison_code, "SUB c");
     add_command(&mut comparison_code, "ADD e");
-    add_command(&mut comparison_code, "JPOS "); // blank jump
+    add_command(&mut comparison_code, "JZERO "); // blank jump
     code.append(&mut comparison_code);
     
     return Ok(code);
@@ -1149,13 +1149,13 @@ fn translate_while(condition: &Condition, commands: &Commands, symbol_table: &Sy
 fn translate_repeat(commands: &Commands, condition: &Condition, symbol_table: &SymbolTable, function_table: &FunctionTable, curr_line: usize, curr_proc: Option<&Pidentifier>) -> Result<Vec<String>, TranslationError> {
     let mut code = Vec::new();
 
+    // translate the loop commands
+
+    let mut commands_code = translate_commands(commands, symbol_table, function_table, curr_line, curr_proc)?;
+
     // translate the condition code
 
     let mut condition_code = translate_condition(condition, symbol_table)?;
-
-    // translate the loop commands
-
-    let mut commands_code = translate_commands(commands, symbol_table, function_table, curr_line + condition_code.len(), curr_proc)?;
 
     // fill the blank jumps in condition code
 
