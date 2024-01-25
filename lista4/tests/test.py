@@ -23,8 +23,7 @@ examples2 = ["program" + str(i) + ".imp" for i in range(0, 4)]
 examples2_data = ["11", "4, 8, 32, 1070", "", "1234567890"]
 examples2_expected = ["1, 1, 0, 1", "2", "2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97", "2, 1, 3, 2, 5, 1, 3607, 1, 3803, 1"]
 
-errors = ["error" + str(i) + ".imp" for i in range(1, 9)]
-errors_expected = []
+# correct tests
 
 programs = examples1 + examples2
 programs_data = examples1_data + examples2_data
@@ -42,5 +41,23 @@ for i in range(0, len(programs)):
     results = ", ".join([out.split("\n")[0] for out in output])
     if results != programs_expected[i]:
         raise ExecutionException(f"invalid result for {programs[i]}: got {results}, expected {programs_expected[i]}")
+
+# error tests
+#
+#errors = ["error" + str(i) + ".imp" for i in range(1, 9)]
+#errors_expected = [""" Error: No such variable: "e" """, """  """]
+#
+#programs = examples1 + examples2
+#programs_data = examples1_data + examples2_data
+#programs_expected = examples1_expected + examples2_expected
+#
+#for i in range(0, len(programs)):
+#    chdir("../compiler")
+#    compiler_result = run("cargo run -q ../" + programs[i] + " ../code.mr 2>/dev/null",, check=True, stdout=PIPE, shell=True, encoding="utf-8")
+#    if compiler_result.returncode == 0:
+#        raise CompilerException("invalid compilation for {programs[i]}")
+#    elif not compiler_result.stdout.startswith(programs_expected[i]):
+#        raise CompilerException("invalid error for {programs[i]}: got {compiler_result.stdout}, expected a string starting with {programs_expected[i]}")
+
 print("tests succeded")
 
