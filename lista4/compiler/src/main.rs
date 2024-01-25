@@ -6,6 +6,7 @@ use std::env;
 use lalrpop_util::lalrpop_mod;
 use grammar::ProgramAllParser;
 use translation::translate;
+use translation::translation_structures::TranslationError;
 
 pub mod err;
 pub mod ast;
@@ -33,7 +34,17 @@ fn main() -> io::Result<()> {
                     });
                     fs::write(&args[2], all_code)?;
                 }
-                Err(e) => eprintln!("Error: {:?}", e),
+                Err(e) => match e {
+                    TranslationError::NoSuchVariable(location, name) => {eprintln!("Error: No such variable: \"{}\" at bytes ({}, {})", name, location.0, location.1)},
+                    TranslationError::NoSuchProcedure(location, name) => {eprintln!("Error: No such procedure: \"{}\" at bytes ({}, {})", name, location.0, location.1)},
+                    TranslationError::RepeatedDeclaration(location, name) => {eprintln!("Error: Repeated declaration of \"{}\" at bytes ({}, {})", name, location.0, location.1)},
+                    TranslationError::NotAnArray(location, name) => {eprintln!("Error: The variable \"{}\" at bytes ({}, {}) has not been declared as an array.\nHELP: remove the indexing {name}[...]", name, location.0, location.1)},
+                    TranslationError::NoArrayIndex(location, name) => {eprintln!("Error: The variable: \"{}\" at bytes ({}, {}) has been declared as array, but no indexing was found.\nHELP: add indexing {name}[...]", name, location.0, location.1)},
+                    TranslationError::ArrayExpected(location, name) => {eprintln!("Error: Expected an array variable, but got single variable \"{}\" at bytes ({}, {})", name, location.0, location.1)},
+                    TranslationError::VariableExpected(location, name) => {eprintln!("Error: Expected a single variable, but got array variable \"{}\" at bytes ({}, {})", name, location.0, location.1)},
+                    TranslationError::RecurrenceNotAllowed(location, name) => {eprintln!("Error: Recurrence in NOT allowed: invoking procedure \"{}\" inside itself at bytes ({}, {})", name, location.0, location.1)},
+                    TranslationError::InvalidNumberOfArguments(location, name) => {eprintln!("Error: Invalid number of arguments found while trying to call \"{}\" at bytes ({}, {})", name, location.0, location.1)},
+                }
             }
         },
         Err(e) => eprintln!("Error: {:?}", e),

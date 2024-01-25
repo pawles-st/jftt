@@ -22,20 +22,20 @@ pub ProgramAll: ProgramAll = {
 }
 
 Procedures: Procedures = {
-	<mut v: Procedures> "PROCEDURE" <h: ProcHead> "IS" <d: Declarations> "IN" <c: Commands> "END" => {
-		v.push(Procedure::new(h, d, c));
+	<mut v: Procedures> <l: @L> "PROCEDURE" <h: ProcHead> "IS" <d: Declarations> <r: @R> "IN" <c: Commands> "END" => {
+		v.push(Procedure::new(h, d, c, (l, r)));
 		v
 	},
-	<mut v: Procedures> "PROCEDURE" <h: ProcHead> "IS" "IN" <c: Commands> "END" => {
-		v.push(Procedure::new(h, Vec::new(), c));
+	<mut v: Procedures> <l: @L> "PROCEDURE" <h: ProcHead> "IS" <r: @R> "IN" <c: Commands> "END" => {
+		v.push(Procedure::new(h, Vec::new(), c, (l, r)));
 		v
 	},
 	=> Vec::new(),
 }
 
 Main: Main = {
-	"PROGRAM IS" <Declarations> "IN" <Commands> "END" => Main::new(<>),
-	"PROGRAM IS" "IN" <Commands> "END" => Main::new(Vec::new(), <>),
+	<l: @L> "PROGRAM IS" <d: Declarations> <r: @R> "IN" <c: Commands> "END" => Main::new(d, c, (l, r)),
+	<l: @L> "PROGRAM IS" "IN" <r: @R> <c: Commands> "END" => Main::new(Vec::new(), c, (l, r)),
 }
 
 Commands: Commands = {
@@ -47,14 +47,14 @@ Commands: Commands = {
 }
 
 Command: Command = {
-	<Identifier> ":=" <Expression> ";" => Command::Assignment(<>),
-	"IF" <Condition> "THEN" <Commands> "ELSE" <Commands> "ENDIF" => Command::IfElse(<>),
-	"IF" <Condition> "THEN" <Commands> "ENDIF" => Command::If(<>),
-	"WHILE" <Condition> "DO" <Commands> "ENDWHILE" => Command::While(<>),
-	"REPEAT" <Commands> "UNTIL" <Condition> ";" => Command::Repeat(<>),
-	<ProcCall> ";" => Command::ProcedureCall(<>),
-	"READ" <Identifier> ";" => Command::Read(<>),
-	"WRITE" <Value> ";" => Command::Write(<>),
+	<l: @L> <i: Identifier> ":=" <e: Expression> ";" <r: @R> => Command::Assignment(i, e, (l, r)),
+	<l: @L> "IF" <c: Condition> "THEN" <ifc: Commands> "ELSE" <elc: Commands> "ENDIF" <r: @R> => Command::IfElse(c, ifc, elc, (l, r)),
+	<l: @L> "IF" <c: Condition> "THEN" <ifc: Commands> "ENDIF" <r: @R> => Command::If(c, ifc, (l, r)),
+	<l: @L> "WHILE" <c: Condition> "DO" <wc: Commands> "ENDWHILE" <r: @R> => Command::While(c, wc, (l, r)),
+	<l: @L> "REPEAT" <rc: Commands> "UNTIL" <c: Condition> ";" <r: @R> => Command::Repeat(rc, c, (l, r)),
+	<l: @L> <p: ProcCall> ";" <r: @R> => Command::ProcedureCall(p, (l, r)),
+	<l: @L> "READ" <i: Identifier> ";" <r: @R> => Command::Read(i, (l, r)),
+	<l: @L> "WRITE" <v: Value> ";" <r: @R> => Command::Write(v, (l, r)),
 }
 
 ProcHead: ProcHead = {
@@ -128,11 +128,11 @@ Identifier: Identifier = {
 	<Pidentifier> "[" <Pidentifier> "]" => Identifier::ArrPid(<>),
 }
 
-Pidentifier: String = {
+Pidentifier: Pidentifier = {
 	r"[_a-z]+" => <>.to_string(),
 }
 
-Num: u64 = {
+Num: Num = {
 	r"[0-9]+" =>? u64::from_str(<>)
 		.map_err(|_| ParseError::User{
 			error: ImpError::NumberTooBig

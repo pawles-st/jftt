@@ -1,4 +1,4 @@
-use crate::ast::ArgumentDeclarations;
+use crate::ast::{ArgumentDeclarations, Location, Pidentifier};
 
 pub fn add_command(code: &mut Vec<String>, command: &str) {
     code.push(String::from(command));
@@ -38,18 +38,18 @@ pub fn register_to_string<'a>(r: &'a Register) -> &'a str {
     }
 }
 
+
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum TranslationError {
-    NoSuchVariable,
-    NoSuchProcedure,
-    RepeatedDeclaration,
-    NotAnArray,
-    NoArrayIndex,
-    ArrayExpected,
-    VariableExpected,
-    RecurrenceNotAllowed,
-    InvalidNumberOfArguments,
-    InvalidReturnAddress,
+    NoSuchVariable(Location, Pidentifier),
+    NoSuchProcedure(Location, Pidentifier),
+    RepeatedDeclaration(Location, Pidentifier),
+    NotAnArray(Location, Pidentifier),
+    NoArrayIndex(Location, Pidentifier),
+    ArrayExpected(Location, Pidentifier),
+    VariableExpected(Location, Pidentifier),
+    RecurrenceNotAllowed(Location, Pidentifier),
+    InvalidNumberOfArguments(Location, Pidentifier),
 }
 
 use std::collections::HashMap;

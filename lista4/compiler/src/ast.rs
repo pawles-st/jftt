@@ -1,3 +1,5 @@
+pub type Location = (usize, usize);
+
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ProgramAll {
     pub procedures: Procedures,
@@ -17,11 +19,12 @@ pub struct Procedure {
     pub proc_head: ProcHead,
     pub declarations: Declarations,
     pub commands: Commands,
+    pub location: Location,
 }
 
 impl Procedure {
-    pub fn new(ph: ProcHead, d: Declarations, c: Commands) -> Self {
-        return Self{proc_head: ph, declarations: d, commands: c};
+    pub fn new(ph: ProcHead, d: Declarations, c: Commands, l: Location) -> Self {
+        return Self{proc_head: ph, declarations: d, commands: c, location: l};
     }
 }
 
@@ -29,11 +32,12 @@ impl Procedure {
 pub struct Main {
     pub declarations: Declarations,
     pub commands: Commands,
+    pub location: Location
 }
 
 impl Main {
-    pub fn new(d: Declarations, c: Commands) -> Self {
-        return Self{declarations: d, commands: c};
+    pub fn new(d: Declarations, c: Commands, l: Location) -> Self {
+        return Self{declarations: d, commands: c, location: l};
     }
 }
 
@@ -41,14 +45,14 @@ pub type Commands = Vec<Command>;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Command {
-    Assignment(Identifier, Expression),
-    IfElse(Condition, Commands, Commands),
-    If(Condition, Commands),
-    While(Condition, Commands),
-    Repeat(Commands, Condition),
-    ProcedureCall(ProcCall),
-    Read(Identifier),
-    Write(Value),
+    Assignment(Identifier, Expression, Location),
+    IfElse(Condition, Commands, Commands, Location),
+    If(Condition, Commands, Location),
+    While(Condition, Commands, Location),
+    Repeat(Commands, Condition, Location),
+    ProcedureCall(ProcCall, Location),
+    Read(Identifier, Location),
+    Write(Value, Location),
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
