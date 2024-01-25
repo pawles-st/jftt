@@ -82,18 +82,36 @@ fn move_value_code(register: &Register) -> Vec<String> {
 }
 
 // create the specified Num (u64) value and store it in the register of choice
-// TODO: efficient constant generation
 fn translate_load_const(value: Num, register: &Register) -> Vec<String> {
     let register_str = register_to_string(register);
 
-    // reset the chosen register and progressively add ones until the value is reached
+    // reset the chosen register
 
-    return (0..value)
-        .fold(vec![String::from("RST ".to_owned() + register_str)], |mut code, _| {
-            let inc_code = "INC ".to_owned() + register_str;
-            code.push(inc_code);
-            code
-        });
+    let mut code = vec![String::from("RST ".to_owned() + register_str)];
+    
+    if value == 0 {
+        return code;
+    }
+
+    // start with the value of msb as 1
+
+    let set_msb_code = "INC ".to_owned() + register_str;
+    code.push(set_msb_code);
+
+    // create the binary representation of the number
+
+    let value_binary: Vec<char> = format!("{:b}", value).chars().collect();
+
+    for bit in 1..value_binary.len() {
+        let shift_code = "SHL ".to_owned() + register_str;
+        code.push(shift_code);
+        if value_binary[bit] == '1' {
+            let set_bit_code = "INC ".to_owned() + register_str;
+            code.push(set_bit_code);
+        }
+    }
+
+    return code;
 }
 
 // fetch the address of a Pidentifier into the register of choice
@@ -577,7 +595,6 @@ fn translate_div_expr(lhs: &Value, rhs: &Value, register: &Register, symbol_tabl
     return Ok(code);
 }
 
-// TODO: implement
 fn translate_mod_expr(lhs: &Value, rhs: &Value, register: &Register, symbol_table: &SymbolTable, mut curr_line: usize) -> Result<Vec<String>, TranslationError> {
     let mut code = Vec::new();
     
