@@ -34,7 +34,7 @@ fn main() {
     match ProgramAllParser::new().parse(&program) {
         Ok(ast) => {
 
-            // compile the program into mv code
+            // compile the program into vm code
 
             //println!("Parsing succeeded!\nAST: {:?}", ast);
             match translate(ast) {
@@ -64,7 +64,7 @@ fn main() {
             }
         },
         Err(e) => {
-            eprintln!("Error: {:?}", e);
+            eprintln!("Error: {}", e);
             std::process::exit(1);
         }    
     }

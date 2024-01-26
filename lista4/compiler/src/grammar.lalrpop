@@ -135,6 +135,6 @@ Pidentifier: Pidentifier = {
 Num: Num = {
 	r"[0-9]+" =>? u64::from_str(<>)
 		.map_err(|_| ParseError::User{
-			error: ImpError::NumberTooBig
+			error: ImpError::NumberTooBig(<>.to_string())
 		}),
 }
