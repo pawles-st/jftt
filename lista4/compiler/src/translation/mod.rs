@@ -87,7 +87,7 @@ fn translate_load_const(value: Num, register: &Register) -> Vec<String> {
     // reset the chosen register
 
     let mut code = vec![String::from("RST ".to_owned() + register_str)];
-    
+
     if value == 0 {
         return code;
     }
@@ -1350,14 +1350,22 @@ fn translate_main(main: &Main, function_table: &FunctionTable, curr_mem_byte: u6
 
 // TODO: check variable initialisation
 pub fn translate(ast: ProgramAll) -> Result<Vec<String>, TranslationError> {
-    let mut code = vec!["JUMP <MAIN ADDRESS>".to_owned()];
+    let mut code = Vec::new();
+
+    // add blank JUMP (jump to main) if there are any procedures
+    
+    if !ast.procedures.is_empty() {
+        add_command(&mut code, "JUMP <MAIN ADDRESS>");
+    }
+
+    // translate the code
 
     let mut function_table = FunctionTable::new();
     let mut curr_mem_byte = 0;
 
     // translate the procedures into code
 
-    for procedure in ast.procedures {
+    for procedure in &ast.procedures {
 
         // translate the the procedure
 
@@ -1370,10 +1378,12 @@ pub fn translate(ast: ProgramAll) -> Result<Vec<String>, TranslationError> {
         curr_mem_byte = next_mem_byte;
     }
 
-    // jump to main
+    // fill the jump to main if it has been added
 
-    let main_jump_code = "JUMP ".to_owned() + &code.len().to_string();
-    code[0] = main_jump_code;
+    if !ast.procedures.is_empty() {
+        let main_jump_code = "JUMP ".to_owned() + &code.len().to_string();
+        code[0] = main_jump_code;
+    }
 
     // translate main into code
 
@@ -1385,7 +1395,7 @@ pub fn translate(ast: ProgramAll) -> Result<Vec<String>, TranslationError> {
 
     for i in 0..code.len() {
         if code[i].starts_with("#") {
-            panic!("Error: comment at the beginning of line");
+            panic!("Comment at the beginning of line");
         }
         if code[i].ends_with("\n") {
             panic!("No newline symbol at the end of line");
