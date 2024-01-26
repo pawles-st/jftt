@@ -6,6 +6,7 @@ use lalrpop_util::lalrpop_mod;
 use grammar::ProgramAllParser;
 use translation::translate;
 use translation::translation_structures::TranslationError;
+use translation::transformation::transform;
 
 pub mod err;
 pub mod ast;
@@ -32,11 +33,16 @@ fn main() {
     // parse the file
 
     match ProgramAllParser::new().parse(&program) {
-        Ok(ast) => {
+        Ok(mut ast) => {
 
             // compile the program into vm code
 
-            //println!("Parsing succeeded!\nAST: {:?}", ast);
+            println!("Parsing succeeded!\nAST: {:?}", ast);
+            match transform(&mut ast) {
+                Err(_) => panic!("test"),
+                _ => {},
+            }
+            println!("Transformed code.\nAST: {:?}", ast);
             match translate(ast) {
                 Ok(code) => {
                     let all_code = code

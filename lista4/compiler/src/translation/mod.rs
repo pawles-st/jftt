@@ -3,6 +3,7 @@ use crate::ast::*;
 use translation_structures::*;
 
 pub mod translation_structures;
+pub mod transformation;
 
 // create an entry in the function table for the proc_head
 fn malloc_proc(proc_head: &ProcHead, function_table: &mut FunctionTable, code_line_number: usize, mem_addr: u64, location: Location) -> Result<(), TranslationError> {
