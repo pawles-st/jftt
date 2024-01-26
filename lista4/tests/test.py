@@ -1,6 +1,6 @@
 import re
 from os import chdir
-from subprocess import run, check_output, Popen, PIPE
+from subprocess import run, check_output, Popen, PIPE, CalledProcessError
 
 class CompilerException(Exception):
     pass
@@ -43,21 +43,21 @@ for i in range(0, len(programs)):
         raise ExecutionException(f"invalid result for {programs[i]}: got {results}, expected {programs_expected[i]}")
 
 # error tests
-#
-#errors = ["error" + str(i) + ".imp" for i in range(1, 9)]
+
+errors = ["error" + str(i) + ".imp" for i in range(1, 9)]
 #errors_expected = [""" Error: No such variable: "e" """, """  """]
-#
-#programs = examples1 + examples2
-#programs_data = examples1_data + examples2_data
-#programs_expected = examples1_expected + examples2_expected
-#
-#for i in range(0, len(programs)):
-#    chdir("../compiler")
-#    compiler_result = run("cargo run -q ../" + programs[i] + " ../code.mr 2>/dev/null",, check=True, stdout=PIPE, shell=True, encoding="utf-8")
-#    if compiler_result.returncode == 0:
-#        raise CompilerException("invalid compilation for {programs[i]}")
-#    elif not compiler_result.stdout.startswith(programs_expected[i]):
-#        raise CompilerException("invalid error for {programs[i]}: got {compiler_result.stdout}, expected a string starting with {programs_expected[i]}")
+
+programs = errors
+#programs_expected = errors_expected
+
+for i in range(0, len(programs)):
+    chdir("../compiler")
+    try:
+        compiler_result = run("cargo run -q ../" + programs[i] + " ../code.mr", check=True, stderr=PIPE, shell=True, encoding="utf-8")
+    except CalledProcessError:
+        pass
+    else:
+        raise CompilerException(f"invalid correct compilation for {programs[i]}")
 
 print("tests succeded")
 
