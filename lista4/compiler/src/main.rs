@@ -61,6 +61,7 @@ fn main() {
                         TranslationError::VariableExpected(location, name) => {eprintln!("Error: Expected a single variable, but got array variable \"{}\" at bytes ({}, {})", name, location.0, location.1)},
                         TranslationError::RecurrenceNotAllowed(location, name) => {eprintln!("Error: Recurrence in NOT allowed: invoking procedure \"{}\" inside itself at bytes ({}, {})", name, location.0, location.1)},
                         TranslationError::InvalidNumberOfArguments(location, name) => {eprintln!("Error: Invalid number of arguments found while trying to call \"{}\" at bytes ({}, {})", name, location.0, location.1)},
+                        TranslationError::UninitialisedVariable(location, name) => {eprintln!("Error: The variable \"{}\" at bytes ({}, {}) in uninitialised", name, location.0, location.1)},
                     }
                     std::process::exit(1);
                 }

@@ -33,7 +33,7 @@ for i in range(0, len(programs)):
     chdir("../compiler")
     compiler_result = run("cargo run -q ../" + programs[i] + " ../code.mr 2>/dev/null", shell=True)
     if compiler_result.returncode != 0:
-        raise CompilerException("invalid compilation for {programs[i]}")
+        raise CompilerException(f"invalid compilation for {programs[i]}")
 
     chdir("../maszyna_wirtualna")
     vm_result = run("./maszyna-wirtualna ../code.mr", check=True, stdout=PIPE, shell=True, input=programs_data[i].replace(", ", "\n"), encoding="utf-8")

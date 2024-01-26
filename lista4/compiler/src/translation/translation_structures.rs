@@ -1,4 +1,5 @@
 use crate::ast::{ArgumentDeclarations, Location, Pidentifier};
+use std::collections::HashMap;
 
 pub fn add_command(code: &mut Vec<String>, command: &str) {
     code.push(String::from(command));
@@ -50,32 +51,40 @@ pub enum TranslationError {
     VariableExpected(Location, Pidentifier),
     RecurrenceNotAllowed(Location, Pidentifier),
     InvalidNumberOfArguments(Location, Pidentifier),
+    UninitialisedVariable(Location, Pidentifier),
 }
 
-use std::collections::HashMap;
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum ValueHeld {
+    Uninitialised,
+    Dynamic,
+    Constant(u64),
+}
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Array {
     pub memloc: u64,
     pub len: u64,
+    pub value: ValueHeld,
     pub is_ref: bool,
 }
 
 impl Array {
-    pub fn new(ml: u64, l: u64, ir: bool) -> Self {
-        return Self{memloc: ml, len: l, is_ref: ir};
+    pub fn new(ml: u64, l: u64, v: ValueHeld, ir: bool) -> Self {
+        return Self{memloc: ml, len: l, value: v, is_ref: ir};
     }
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Variable {
     pub memloc: u64,
+    pub value: ValueHeld,
     pub is_ref: bool,
 }
 
 impl Variable {
-    pub fn new(ml: u64, ir: bool) -> Self {
-        return Self{memloc: ml, is_ref: ir};
+    pub fn new(ml: u64, v: ValueHeld, ir: bool) -> Self {
+        return Self{memloc: ml, value: v, is_ref: ir};
     }
 }
 
