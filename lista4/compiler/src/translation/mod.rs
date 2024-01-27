@@ -355,7 +355,7 @@ fn translate_val(value: &Value, register: &Register, symbol_table: &mut SymbolTa
             let mut store_code = Vec::new();
             add_command(&mut store_code, "LOAD b");
 
-            let comment = " loading ".to_owned() + &format!("{:?}", id) + "'s value into register " + &register_to_string(register);
+            let comment = "loading ".to_owned() + &format!("{:?}", id) + "'s value into register " + &register_to_string(register);
             add_comment(&mut store_code, &comment);
 
             code.append(&mut store_code);
@@ -582,8 +582,7 @@ fn divide_code(curr_line: usize) -> Vec<String> {
     add_command(&mut code, "SHR d"); // check_end
     add_command(&mut code, "GET c");
     add_command(&mut code, "SUB d");
-    add_command_string(&mut code, "JPOS ".to_owned() + &(curr_line + 26).to_string());
-    add_command_string(&mut code, "JUMP ".to_owned() + &(curr_line + 13).to_string());
+    add_command_string(&mut code, "JZERO ".to_owned() + &(curr_line + 13).to_string());
     // label: finish
     
     return code;
