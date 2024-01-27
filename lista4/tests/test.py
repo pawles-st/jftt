@@ -8,9 +8,9 @@ class CompilerException(Exception):
 class ExecutionException(Exception):
     pass
 
-#ansi_escape_8bit = re.compile(
-#    br'(?:\x1B[@-Z\\-_]|[\x80-\x9A\x9C-\x9F]|(?:\x1B\[|\x9B)[0-?]*[ -/]*[@-~])'
-#)
+ansi_escape_8bit = re.compile(
+    br'(?:\x1B[@-Z\\-_]|[\x80-\x9A\x9C-\x9F]|(?:\x1B\[|\x9B)[0-?]*[ -/]*[@-~])'
+)
 
 #curr_dir = popen("pwd")
 #print(curr_dir.read())
@@ -37,6 +37,15 @@ for i in range(0, len(programs)):
 
     chdir("../maszyna_wirtualna")
     vm_result = run("./maszyna-wirtualna ../code.mr", check=True, stdout=PIPE, shell=True, input=programs_data[i].replace(", ", "\n"), encoding="utf-8")
+    print(programs[i])
+    #vm_result.stdout = ansi_escape_8bit.sub(b'', bytes(vm_result.stdout, encoding="utf-8"))
+    commands_line = vm_result.stdout.split("\n")[1]
+    print(commands_line)
+    #commands = int(commands_line.split(" ")[-1][:-2])
+    cost_line = vm_result.stdout.split("\n")[-2]
+    print(cost_line)
+    #cost = int(cost_line[(cost_line.find("koszt:")+7):cost_line.find(";")])
+    #print(commands, cost)
     output = vm_result.stdout.split("> ")[1:];
     results = ", ".join([out.split("\n")[0] for out in output])
     if results != programs_expected[i]:
@@ -59,5 +68,5 @@ for i in range(0, len(programs)):
     else:
         raise CompilerException(f"invalid correct compilation for {programs[i]}")
 
-print("tests succeded")
+print("TESTS SUCCEEDED")
 

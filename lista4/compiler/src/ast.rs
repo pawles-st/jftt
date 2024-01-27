@@ -1,6 +1,6 @@
 pub type Location = (usize, usize);
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct ProgramAll {
     pub procedures: Procedures,
     pub main: Main,
@@ -14,7 +14,7 @@ impl ProgramAll {
 
 pub type Procedures = Vec<Procedure>;
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct Procedure {
     pub proc_head: ProcHead,
     pub declarations: Declarations,
@@ -28,7 +28,7 @@ impl Procedure {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct Main {
     pub declarations: Declarations,
     pub commands: Commands,
@@ -43,7 +43,7 @@ impl Main {
 
 pub type Commands = Vec<Command>;
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum Command {
     Assignment(Identifier, Expression, Location),
     IfElse(Condition, Commands, Commands, Location),
@@ -55,7 +55,7 @@ pub enum Command {
     Write(Value, Location),
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct ProcHead {
     pub name: Pidentifier,
     pub args_decl: ArgumentDeclarations,
@@ -67,7 +67,7 @@ impl ProcHead {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct ProcCall {
     pub name: Pidentifier,
     pub args: Arguments,
@@ -81,7 +81,7 @@ impl ProcCall {
 
 pub type Declarations = Vec<Declaration>;
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum Declaration {
     Var(Pidentifier),
     Arr(Pidentifier, Num),
@@ -97,7 +97,7 @@ pub enum ArgumentDeclaration {
 
 pub type Arguments = Vec<Pidentifier>;
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum Expression {
     Val(Value),
     Add(Value, Value),
@@ -107,7 +107,7 @@ pub enum Expression {
     Mod(Value, Value),
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum Condition {
     Equal(Value, Value),
     NotEqual(Value, Value),
@@ -117,13 +117,13 @@ pub enum Condition {
     LesserOrEqual(Value, Value),
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum Value {
     Number(Num),
     Id(Identifier),
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum Identifier {
     Pid(Pidentifier),
     ArrNum(Pidentifier, Num),

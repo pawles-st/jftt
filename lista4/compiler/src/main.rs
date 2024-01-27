@@ -13,6 +13,22 @@ pub mod ast;
 pub mod translation;
 lalrpop_mod!(pub grammar);
 
+fn report_error(err: &TranslationError) {
+    match err {
+        TranslationError::NoSuchVariable(location, name) => {eprintln!("Error: No such variable: \"{}\" at bytes ({}, {})", name, location.0, location.1)},
+        TranslationError::NoSuchProcedure(location, name) => {eprintln!("Error: No such procedure: \"{}\" at bytes ({}, {})", name, location.0, location.1)},
+        TranslationError::RepeatedDeclaration(location, name) => {eprintln!("Error: Repeated declaration of \"{}\" at bytes ({}, {})", name, location.0, location.1)},
+        TranslationError::NotAnArray(location, name) => {eprintln!("Error: The variable \"{}\" at bytes ({}, {}) has not been declared as an array.\nHELP: remove the indexing {name}[...]", name, location.0, location.1)},
+        TranslationError::NoArrayIndex(location, name) => {eprintln!("Error: The variable: \"{}\" at bytes ({}, {}) has been declared as array, but no indexing was found.\nHELP: add indexing {name}[...]", name, location.0, location.1)},
+        TranslationError::ArrayExpected(location, name) => {eprintln!("Error: Expected an array variable, but got single variable \"{}\" at bytes ({}, {})", name, location.0, location.1)},
+        TranslationError::VariableExpected(location, name) => {eprintln!("Error: Expected a single variable, but got array variable \"{}\" at bytes ({}, {})", name, location.0, location.1)},
+        TranslationError::RecurrenceNotAllowed(location, name) => {eprintln!("Error: Recurrence in NOT allowed: invoking procedure \"{}\" inside itself at bytes ({}, {})", name, location.0, location.1)},
+        TranslationError::InvalidNumberOfArguments(location, name) => {eprintln!("Error: Invalid number of arguments found while trying to call \"{}\" at bytes ({}, {})", name, location.0, location.1)},
+        TranslationError::UninitialisedVariable(location, name) => {eprintln!("Error: The variable \"{}\" at bytes ({}, {}) in uninitialised", name, location.0, location.1)},
+    }
+    std::process::exit(1);
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() < 3 {
@@ -37,12 +53,11 @@ fn main() {
 
             // compile the program into vm code
 
-            println!("Parsing succeeded!\nAST: {:?}", ast);
-            match transform(&mut ast) {
-                Err(_) => panic!("test"),
-                _ => {},
+            //println!("Parsing succeeded!\nAST: {:?}", ast);
+            if let Err(e) = transform(&mut ast) {
+                report_error(&e);
             }
-            println!("Transformed code.\nAST: {:?}", ast);
+            //println!("Transformed code.\nAST: {:?}", ast);
             match translate(ast) {
                 Ok(code) => {
                     let all_code = code
@@ -56,21 +71,7 @@ fn main() {
                         std::process::exit(1);
                     };
                 }
-                Err(e) => {
-                    match e {
-                        TranslationError::NoSuchVariable(location, name) => {eprintln!("Error: No such variable: \"{}\" at bytes ({}, {})", name, location.0, location.1)},
-                        TranslationError::NoSuchProcedure(location, name) => {eprintln!("Error: No such procedure: \"{}\" at bytes ({}, {})", name, location.0, location.1)},
-                        TranslationError::RepeatedDeclaration(location, name) => {eprintln!("Error: Repeated declaration of \"{}\" at bytes ({}, {})", name, location.0, location.1)},
-                        TranslationError::NotAnArray(location, name) => {eprintln!("Error: The variable \"{}\" at bytes ({}, {}) has not been declared as an array.\nHELP: remove the indexing {name}[...]", name, location.0, location.1)},
-                        TranslationError::NoArrayIndex(location, name) => {eprintln!("Error: The variable: \"{}\" at bytes ({}, {}) has been declared as array, but no indexing was found.\nHELP: add indexing {name}[...]", name, location.0, location.1)},
-                        TranslationError::ArrayExpected(location, name) => {eprintln!("Error: Expected an array variable, but got single variable \"{}\" at bytes ({}, {})", name, location.0, location.1)},
-                        TranslationError::VariableExpected(location, name) => {eprintln!("Error: Expected a single variable, but got array variable \"{}\" at bytes ({}, {})", name, location.0, location.1)},
-                        TranslationError::RecurrenceNotAllowed(location, name) => {eprintln!("Error: Recurrence in NOT allowed: invoking procedure \"{}\" inside itself at bytes ({}, {})", name, location.0, location.1)},
-                        TranslationError::InvalidNumberOfArguments(location, name) => {eprintln!("Error: Invalid number of arguments found while trying to call \"{}\" at bytes ({}, {})", name, location.0, location.1)},
-                        TranslationError::UninitialisedVariable(location, name) => {eprintln!("Error: The variable \"{}\" at bytes ({}, {}) in uninitialised", name, location.0, location.1)},
-                    }
-                    std::process::exit(1);
-                }
+                Err(e) => report_error(&e),
             }
         },
         Err(e) => {
