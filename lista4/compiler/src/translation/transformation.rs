@@ -78,6 +78,34 @@ fn count_calls(ast: &ProgramAll) -> Result<FunctionCallTable, TranslationError> 
     return Ok(function_calls);
 }
 
+fn total_commands_count(commands: &Commands) -> usize {
+    let mut commands_remaining = commands.clone();
+    let mut total_commands = 0;
+
+    while !commands_remaining.is_empty() {
+        total_commands += 1;
+        let mut curr_command = commands_remaining.pop().unwrap();
+        match curr_command {
+            Command::IfElse(_, ref mut if_commands, ref mut else_commands, _) => {
+                commands_remaining.append(if_commands);
+                commands_remaining.append(else_commands);
+            },
+            Command::If(_, ref mut if_commands, _) => {
+                commands_remaining.append(if_commands);
+            },
+            Command::While(_, ref mut while_commands, _) => {
+                commands_remaining.append(while_commands);
+            },
+            Command::Repeat(ref mut repeat_commands, _, _) => {
+                commands_remaining.append(repeat_commands);
+            },
+            _ => {},
+        }
+    }
+
+    return total_commands;
+}
+
 fn replace_id(id: &mut Identifier, from: &Pidentifier, to: &Pidentifier) {
     match id {
         Identifier::Pid(pid) => {
@@ -175,54 +203,17 @@ fn replace_proc_call(proc_call: &mut ProcCall, from: &Pidentifier, to: &Pidentif
     }
 }
 
-// TODO: check repeated declarations
-// replace all variable name usages with the other variable name
-fn replace(commands: &mut Commands, from: &Pidentifier, to: &Pidentifier) {
-    for command in commands.iter_mut() {
-        match command {
-            Command::Assignment(ref mut id, ref mut expr, _) => {
-                replace_id(id, from, to);
-                replace_expr(expr, from, to);
-            },
-            Command::IfElse(ref mut condition, ref mut if_commands, ref mut else_commands, _) => {
-                replace_condition(condition, from, to);
-                replace(if_commands, from, to);
-                replace(else_commands, from, to);
-            },
-            Command::If(ref mut condition, ref mut if_commands, _) => {
-                replace_condition(condition, from, to);
-                replace(if_commands, from, to);
-            },
-            Command::While(ref mut condition, ref mut while_commands, _) => {
-                replace_condition(condition, from, to);
-                replace(while_commands, from, to);
-            },
-            Command::Repeat(ref mut repeat_commands, ref mut condition, _) => {
-                replace(repeat_commands, from, to);
-                replace_condition(condition, from, to);
-            },
-            Command::ProcedureCall(ref mut proc_call, _) => {
-                replace_proc_call(proc_call, from, to);
-            },
-            Command::Read(ref mut id, _) => {
-                replace_id(id, from, to);
-            },
-            Command::Write(ref mut value, _) => {
-                replace_value(value, from, to);
-            }
-        }
-    }
-}
-
 // replace all procedure parameters with the arguments provided in the call 
 fn replace_parameters(dest_procedure: &mut Procedure, curr_proc_call_args: &Arguments) {
-    for (dest_args_decl, curr_arg) in zip(&dest_procedure.proc_head.args_decl, curr_proc_call_args) {
+    for (dest_args_decl, curr_arg) in zip(&mut dest_procedure.proc_head.args_decl, curr_proc_call_args) {
         match dest_args_decl {
             ArgumentDeclaration::Var(dest_arg) => {
                 replace(&mut dest_procedure.commands, dest_arg, &curr_arg);
+                *dest_args_decl = ArgumentDeclaration::Var(curr_arg.clone());
             },
             ArgumentDeclaration::Arr(dest_arg) => {
                 replace(&mut dest_procedure.commands, dest_arg, &curr_arg);
+                *dest_args_decl = ArgumentDeclaration::Arr(curr_arg.clone());
             },
         }
     }
@@ -300,6 +291,45 @@ fn replace_declarations(dest_procedure: &mut Procedure, curr_proc_args_decls: Op
     }
 }
 
+// TODO: check repeated declarations
+// replace all variable name usages with the other variable name
+fn replace(commands: &mut Commands, from: &Pidentifier, to: &Pidentifier) {
+    for command in commands.iter_mut() {
+        match command {
+            Command::Assignment(ref mut id, ref mut expr, _) => {
+                replace_id(id, from, to);
+                replace_expr(expr, from, to);
+            },
+            Command::IfElse(ref mut condition, ref mut if_commands, ref mut else_commands, _) => {
+                replace_condition(condition, from, to);
+                replace(if_commands, from, to);
+                replace(else_commands, from, to);
+            },
+            Command::If(ref mut condition, ref mut if_commands, _) => {
+                replace_condition(condition, from, to);
+                replace(if_commands, from, to);
+            },
+            Command::While(ref mut condition, ref mut while_commands, _) => {
+                replace_condition(condition, from, to);
+                replace(while_commands, from, to);
+            },
+            Command::Repeat(ref mut repeat_commands, ref mut condition, _) => {
+                replace(repeat_commands, from, to);
+                replace_condition(condition, from, to);
+            },
+            Command::ProcedureCall(ref mut proc_call, _) => {
+                replace_proc_call(proc_call, from, to);
+            },
+            Command::Read(ref mut id, _) => {
+                replace_id(id, from, to);
+            },
+            Command::Write(ref mut value, _) => {
+                replace_value(value, from, to);
+            },
+        }
+    }
+}
+
 // expand all proc calls in the commands list which meet the required criteria
 fn expand_procedures(procedures: &[Procedure], curr_proc_head: Option<&ProcHead>, curr_proc_declarations: &mut Declarations, commands: &mut Commands, function_calls: &FunctionCallTable) -> Result<(), TranslationError> {
     let mut proc_calls_replacements = Vec::new();
@@ -325,7 +355,9 @@ fn expand_procedures(procedures: &[Procedure], curr_proc_head: Option<&ProcHead>
 
                         // ...and check if it meets the expansion criteria
 
-                        if *function_calls.get(&procedure.proc_head.name).unwrap() == 1 {
+                        let calls_count = *function_calls.get(&procedure.proc_head.name).unwrap();
+
+                        if calls_count == 1 || total_commands_count(&procedure.commands) * calls_count < 20 {
 
                             // create a copy of the destination procedure and then modify its body
 
@@ -337,7 +369,12 @@ fn expand_procedures(procedures: &[Procedure], curr_proc_head: Option<&ProcHead>
 
                             // replace all uses of argument parameters with the call variables
 
+                            replace_parameters(&mut dest_proc, &proc_call.args.iter().map(|arg| arg.to_owned() + "'").collect());
+
+                            // remove the chenge marks from the replaced names
+
                             replace_parameters(&mut dest_proc, &proc_call.args);
+
 
                             // store the procedure body for later expansion
 
@@ -389,7 +426,7 @@ fn expand_procedures(procedures: &[Procedure], curr_proc_head: Option<&ProcHead>
     for (command_idx, proc_commands) in proc_calls_replacements {
         let next_offset = proc_commands.len() - 1;
         commands.splice(command_idx+offset..=command_idx+offset, proc_commands);
-        offset = next_offset;
+        offset += next_offset;
     }
     //println!("PROCEDURE: {:?}", curr_proc_head.map_or("Main", |head| &head.name));
     //println!("curr_proc_decl: {:?}", curr_proc_declarations);
