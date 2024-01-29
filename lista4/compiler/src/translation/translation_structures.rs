@@ -1,5 +1,6 @@
-use crate::ast::{ArgumentDeclarations, Location, Pidentifier};
+use crate::ast::{ArgumentDeclarations, Location, Pidentifier, Identifier};
 use std::collections::HashMap;
+use num::BigInt;
 
 pub fn add_command(code: &mut Vec<String>, command: &str) {
     code.push(String::from(command));
@@ -14,7 +15,7 @@ pub fn add_comment(code: &mut Vec<String>, comment: &str) {
     code[0] += comment;
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 pub enum Register {
     A,
     B,
@@ -24,6 +25,48 @@ pub enum Register {
     F,
     G,
     H,
+}
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
+pub enum RegisterState {
+    Noise,
+    Variable(Identifier),
+    Constant(BigInt),
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct RegisterStates {
+    pub registers: HashMap<Register, RegisterState>,
+    next: Register,
+}
+
+impl RegisterStates {
+    pub fn new() -> Self {
+        let starting_states = HashMap::from([
+            (Register::A, RegisterState::Noise),
+            (Register::B, RegisterState::Noise),
+            (Register::C, RegisterState::Noise),
+            (Register::D, RegisterState::Noise),
+            (Register::E, RegisterState::Noise),
+            (Register::F, RegisterState::Noise),
+            (Register::G, RegisterState::Noise),
+            (Register::H, RegisterState::Noise),
+        ]);
+        return Self{registers: starting_states, next: Register::D};
+    }
+
+    pub fn get_next(&mut self) -> Register {
+        let current_register = self.next.clone();
+        self.next = match current_register {
+            Register::D => Register::E,
+            Register::E => Register::F,
+            Register::F => Register::G,
+            Register::G => Register::H,
+            Register::H => Register::D,
+            _ => panic!("Invalid next register field"),
+        };
+        return current_register;
+    }
 }
 
 pub fn register_to_string<'a>(r: &'a Register) -> &'a str {
@@ -58,7 +101,7 @@ pub enum TranslationError {
 pub enum ValueHeld {
     Uninitialised,
     Dynamic,
-    Constant(u64),
+    Constant(BigInt),
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
