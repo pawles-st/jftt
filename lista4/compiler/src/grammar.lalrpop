@@ -34,8 +34,8 @@ Procedures: Procedures = {
 }
 
 Main: Main = {
-	<l: @L> "PROGRAM IS" <d: Declarations> <r: @R> "IN" <c: Commands> "END" => Main::new(d, c, (l, r)),
-	<l: @L> "PROGRAM IS" "IN" <r: @R> <c: Commands> "END" => Main::new(Vec::new(), c, (l, r)),
+	<l: @L> "PROGRAM" "IS" <d: Declarations> <r: @R> "IN" <c: Commands> "END" => Main::new(d, c, (l, r)),
+	<l: @L> "PROGRAM" "IS" "IN" <r: @R> <c: Commands> "END" => Main::new(Vec::new(), c, (l, r)),
 }
 
 Commands: Commands = {

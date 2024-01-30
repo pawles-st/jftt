@@ -11,8 +11,15 @@ pub fn add_command_string(code: &mut Vec<String>, command: String) {
 }
 
 pub fn add_comment(code: &mut Vec<String>, comment: &str) {
-    code[0] += " # ";
-    code[0] += comment;
+    if code.len() > 0 {
+        code[0] += " # ";
+        code[0] += comment;
+    }
+}
+
+pub enum DivisionType {
+    Division,
+    Modulo,
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
@@ -34,7 +41,7 @@ pub enum RegisterState {
     Constant(BigInt),
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct RegisterStates {
     pub registers: HashMap<Register, RegisterState>,
     next: Register,
@@ -56,6 +63,11 @@ impl RegisterStates {
     }
 
     pub fn get_next(&mut self) -> Register {
+        for register in [Register::D, Register::E, Register::F, Register::G, Register::H] {
+            if let RegisterState::Noise = self.registers.get(&register).unwrap() {
+                return register;
+            }
+        }
         let current_register = self.next.clone();
         self.next = match current_register {
             Register::D => Register::E,
@@ -66,6 +78,15 @@ impl RegisterStates {
             _ => panic!("Invalid next register field"),
         };
         return current_register;
+    }
+
+    pub fn scan(&self, id: &Identifier) -> Option<Register> {
+        for (register, state) in self.registers.iter() {
+            if *state == RegisterState::Variable(id.clone()) && register != &Register::A && register != &Register::B {
+                return Some(register.clone());
+            }
+        }
+        return None;
     }
 }
 
