@@ -62,14 +62,8 @@ impl RegisterStates {
         return Self{registers: starting_states, next: Register::D};
     }
 
-    pub fn get_next(&mut self) -> Register {
-        for register in [Register::D, Register::E, Register::F, Register::G, Register::H] {
-            if let RegisterState::Noise = self.registers.get(&register).unwrap() {
-                return register;
-            }
-        }
-        let current_register = self.next.clone();
-        self.next = match current_register {
+    fn next_register(&self, register: &Register) -> Register {
+        return match register {
             Register::D => Register::E,
             Register::E => Register::F,
             Register::F => Register::G,
@@ -77,6 +71,20 @@ impl RegisterStates {
             Register::H => Register::D,
             _ => panic!("Invalid next register field"),
         };
+
+    }
+
+    pub fn get_next(&mut self) -> Register {
+        /*
+        for register in [Register::D, Register::E, Register::F, Register::G, Register::H] {
+            if let RegisterState::Noise = self.registers.get(&register).unwrap() {
+                self.next = self.next_register(&register);
+                return register;
+            }
+        }
+        */
+        let current_register = self.next.clone();
+        self.next = self.next_register(&current_register);
         return current_register;
     }
 

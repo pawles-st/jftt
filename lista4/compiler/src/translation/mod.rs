@@ -73,8 +73,12 @@ fn malloc(mut curr_mem_byte: u64, decls: &Declarations, symbol_table: &mut Symbo
     return Ok(curr_mem_byte);
 }
 
+// store the value of the variable held in a given register into memory
+// NOTICE: erases the contents of registers A, B
 fn store_variable_code(id: &Identifier, register: &Register, symbol_table: &mut SymbolTable, register_states: &mut RegisterStates) -> Vec<String> {
     let mut code = Vec::new();
+
+    println!("need register {}; storing variable {:?}", register_to_string(&register), id);
 
     // load the variable's address
 
@@ -91,22 +95,25 @@ fn store_variable_code(id: &Identifier, register: &Register, symbol_table: &mut 
     return code;
 }
 
+// store the values of all variables held within registers and change all states to noise
 fn reset_register_memory(symbol_table: &mut SymbolTable, register_states: &mut RegisterStates) -> Vec<String> {
     let mut code = Vec::new();
 
-    for register in [&Register::C, &Register::D, &Register::E, &Register::F, &Register::G, &Register::H, &Register::A, &Register::B] {
-        if let RegisterState::Variable(id) = register_states.registers.get(register).unwrap() {
-            let mut var_store_code = store_variable_code(&id.clone(), register, symbol_table, register_states);
+    for register in [Register::C, Register::D, Register::E, Register::F, Register::G, Register::H] {
+        if let RegisterState::Variable(id) = register_states.registers.get(&register).unwrap() {
+            let mut var_store_code = store_variable_code(&id.clone(), &register, symbol_table, register_states);
             code.append(&mut var_store_code);
         }
-        register_states.registers.entry(register.clone()).and_modify(|state| *state = RegisterState::Noise);
+        register_states.registers.entry(register).and_modify(|state| *state = RegisterState::Noise);
     }
-    println!("{:?}", register_states);
+    register_states.registers.entry(Register::A).and_modify(|state| *state = RegisterState::Noise);
+    register_states.registers.entry(Register::B).and_modify(|state| *state = RegisterState::Noise);
 
     return code;
 }
 
 // move the value from register A into the register of choice
+// NOTICE: this does not update the register state, the caller should do so themselves
 fn move_value_code(register: &Register, current_id: Option<&Identifier>, register_states: &mut RegisterStates, symbol_table: &mut SymbolTable) -> Vec<String> {
     if matches!(register, Register::A) {
         return Vec::new();
@@ -117,7 +124,7 @@ fn move_value_code(register: &Register, current_id: Option<&Identifier>, registe
 
         if let RegisterState::Variable(id) = register_states.registers.get(register).unwrap() {
             if let Some(current) = current_id {
-                if current != id {
+                //if current != id {
 
                     let mut var_store_code = store_variable_code(&id.clone(), register, symbol_table, register_states);
                     add_command(&mut code, "PUT c");
@@ -126,7 +133,7 @@ fn move_value_code(register: &Register, current_id: Option<&Identifier>, registe
 
                     register_states.registers.entry(Register::C).and_modify(|e| *e = RegisterState::Noise);
 
-                }
+                //}
             } else {
 
                 let mut var_store_code = store_variable_code(&id.clone(), register, symbol_table, register_states);
@@ -139,10 +146,7 @@ fn move_value_code(register: &Register, current_id: Option<&Identifier>, registe
             }
         }
 
-        // copy the value of register A into the register of choice. updating its state
-
-        let register_a_state = register_states.registers.get_mut(&Register::A).unwrap().clone();
-        register_states.registers.entry(register.clone()).and_modify(|e| *e = register_a_state);
+        // copy the value of register A into the register of choice
 
         add_command_string(&mut code, "PUT ".to_owned() + register_to_string(register));
 
@@ -174,16 +178,16 @@ fn translate_load_const(value: Num, register: &Register, register_states: &mut R
         } // else: continue on
     }
     
-    // modify the register's state
-
-    *modified_register_state = RegisterState::Constant(BigInt::from_u64(value).unwrap());
-    
     // store the currently held variable, if any, in memory
 
     if let RegisterState::Variable(id) = register_states.registers.get(register).unwrap() {
         let mut var_store_code = store_variable_code(&id.clone(), register, symbol_table, register_states);
         code.append(&mut var_store_code);
     }
+    
+    // modify the register's state
+
+    register_states.registers.entry(register.clone()).and_modify(|state| *state = RegisterState::Constant(BigInt::from_u64(value).unwrap()));
 
     // reset the chosen register
 
@@ -461,26 +465,24 @@ fn translate_val(value: &Value, register: &Register, symbol_table: &mut SymbolTa
 
                 // ...and load its value into the specified register
 
-                let mut store_code = Vec::new();
-                add_command(&mut store_code, "LOAD b");
-
-                // update the register's state
-
-                /*
-                if matches!(id, Identifier::Pid{..}) || matches!(id, Identifier::ArrNum{..}) {
-                    register_states.registers.entry(Register::A).and_modify(|state| *state = RegisterState::Variable(id.clone()));
-                } else {
-                    register_states.registers.entry(Register::A).and_modify(|state| *state = RegisterState::Noise);
-                }
-                */
+                let mut load_code = Vec::new();
+                add_command(&mut load_code, "LOAD b");
 
                 let comment = "loading ".to_owned() + &format!("{:?}", id) + "'s value into register " + &register_to_string(register);
-                add_comment(&mut store_code, &comment);
+                add_comment(&mut load_code, &comment);
 
-                code.append(&mut store_code);
+                code.append(&mut load_code);
 
                 code.append(&mut move_value_code(register, None, register_states, symbol_table));
+                
+                // update the register's state
 
+                if matches!(id, Identifier::Pid{..}) || matches!(id, Identifier::ArrNum{..}) {
+                    register_states.registers.entry(register.clone()).and_modify(|state| *state = RegisterState::Variable(id.clone()));
+                } else {
+                    register_states.registers.entry(register.clone()).and_modify(|state| *state = RegisterState::Noise);
+                }
+                println!("::{:?}", register_states);
             }
         },
     }
@@ -720,11 +722,14 @@ fn multiply_code(curr_line: usize, lhs_register: &Register, rhs_register: &Regis
 // TODO: optimise multiplication by a constant
 // NOTICE: erases the contents of registers A, B, aux1, aux2, aux3
 fn translate_mul_expr(id: &Identifier, lhs: &Value, rhs: &Value, register: &Register, symbol_table: &mut SymbolTable, mut curr_line: usize, register_states: &mut RegisterStates, location: Location) -> Result<Vec<String>, TranslationError> {
+    println!("MULTIPLICATION {:?} times {:?}", lhs, rhs);
     let mut code = Vec::new();
 
     // load the rhs value
 
     // check if a register is already holding the value
+
+    println!("{:?}", register_states);
 
     let rhs_register;
 
@@ -736,6 +741,9 @@ fn translate_mul_expr(id: &Identifier, lhs: &Value, rhs: &Value, register: &Regi
             rhs_register = register;
 
         } else {
+            println!("yes");
+    println!("{:?}", id);
+
 
             // if any of the conditions fail, load its value into the next register
 
@@ -757,6 +765,8 @@ fn translate_mul_expr(id: &Identifier, lhs: &Value, rhs: &Value, register: &Regi
     // load the lhs value
 
     // check if a register is already holding the value
+    
+    println!("{:?}", register_states);
     
     let lhs_register;
 
@@ -785,6 +795,10 @@ fn translate_mul_expr(id: &Identifier, lhs: &Value, rhs: &Value, register: &Regi
         code.append(&mut lhs_code);
 
     }
+
+    println!("multiplying:");
+    println!("{:?}", lhs_register);
+    println!("{:?}", rhs_register);
     
     let comment = format!("{:?}", lhs) + " * " + &format!("{:?}", rhs);
     add_comment(&mut code, &comment);
@@ -1329,9 +1343,7 @@ fn translate_proc_call(name: &Pidentifier, args: &Arguments, symbol_table: &mut 
 
         // load the return's storage address...
 
-        println!("{:?}", register_states.registers.get(&Register::B).unwrap());
         let mut store_addr = translate_load_const(proc_info.mem_addr, &Register::B, register_states, symbol_table);
-        println!("{:?}", store_addr);
         code.append(&mut store_addr);
 
         // ...and store the return address there
@@ -1625,9 +1637,7 @@ fn translate_lesser(lhs: &Value, rhs: &Value, symbol_table: &mut SymbolTable, re
 
     // check if a register is already holding the value
 
-    println!("{:?}", register_states);
     let rhs_register;
-    println!("{:?}", rhs);
 
     if let Value::Id(id) = rhs {
         if let Some(register) = register_states.scan(id) {
@@ -1694,8 +1704,6 @@ fn translate_lesser(lhs: &Value, rhs: &Value, symbol_table: &mut SymbolTable, re
 
     let mut comparison_code = Vec::new();
 
-    println!("{:?}", lhs_register);
-    println!("{:?}", rhs_register);
     add_command_string(&mut comparison_code, "GET ".to_owned() + register_to_string(&rhs_register));
     add_command_string(&mut comparison_code, "SUB ".to_owned() + register_to_string(&lhs_register));
     add_command(&mut comparison_code, "JZERO "); // blank jump
@@ -2239,7 +2247,6 @@ fn translate_procedure(procedure: &Procedure, function_table: &mut FunctionTable
     let mut ret_code = translate_return(&mut symbol_table, register_states);
     code.append(&mut ret_code);
 
-    println!("{:?}", register_states);
 
     return Ok((code, next_mem_byte));
 }

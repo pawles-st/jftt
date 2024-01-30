@@ -357,7 +357,8 @@ fn expand_procedures(procedures: &[Procedure], curr_proc_head: Option<&ProcHead>
 
                         let calls_count = *function_calls.get(&procedure.proc_head.name).unwrap();
 
-                        if calls_count == 1 || total_commands_count(&procedure.commands) * calls_count < 20 {
+                        if true {
+//                        if calls_count == 1 || total_commands_count(&procedure.commands) * calls_count < 20 {
 
                             // create a copy of the destination procedure and then modify its body
 
@@ -374,7 +375,6 @@ fn expand_procedures(procedures: &[Procedure], curr_proc_head: Option<&ProcHead>
                             // remove the chenge marks from the replaced names
 
                             replace_parameters(&mut dest_proc, &proc_call.args);
-
 
                             // store the procedure body for later expansion
 
